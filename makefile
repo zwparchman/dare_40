@@ -1,4 +1,4 @@
-OFLAGS = 
+OFLAGS =  -fsanitize=address
 CC=g++
 STD=-std=c++17
 CFLAGS= -g -c -W -Wall -Wextra $(STD) -Wno-missing-field-initializers -Wshadow \

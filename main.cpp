@@ -17,7 +17,8 @@ using id_type=size_t;
 
 #include "storage.hpp"
 
-float FRAME_RATE=60.0f;
+const float FRAME_RATE=60.0f;
+const float FRAME_TIME=1.0f/60.0f;
 
 
 std::unordered_map<std::string, std::shared_ptr<Texture2D>> texture_cache;
@@ -116,9 +117,12 @@ struct Collidable{
 };
 
 struct PlayerControl{};
-struct IsBullet{};
 struct DespawnFarRight{};
 struct DespawnFarLeft{};
+
+struct Bullet{
+    float damage;
+};
 
 struct Powerup {
     float regen_increase=0;
@@ -127,7 +131,6 @@ struct Powerup {
 
 struct PlayerStats {
     float shield=100;
-    float lives=3;
     float movement_speed=15.0f;
     float shield_regen;
     int free_modules;
@@ -135,12 +138,18 @@ struct PlayerStats {
     vector<Powerup> owned;
 };
 
+struct Shield {
+    float ammount;
+    float regen;
+};
+
 struct GameLevel{
     VectorStorage<Drawable> drawable_list;
     VectorStorage<Physical> physical_list;
     VectorStorage<Collidable> collidable_list;
     NullStorage<PlayerControl> controllable_list;
-    NullStorage<IsBullet> bullet_list;
+    HashStorage<Bullet> bullet_list;
+    HashStorage<Shield> shield_list;
     NullStorage<DespawnFarLeft> despawn_left;
     NullStorage<DespawnFarRight> despawn_right;
     HashStorage<Powerup> powerup_list;
@@ -182,6 +191,8 @@ struct GameLevel{
         do_movement();
         do_despawn();
         do_collision();
+        do_death_check();
+        do_shield_regen();
     }
 
     void draw(){
@@ -212,6 +223,7 @@ struct GameLevel{
         collidable_list.add(id, Collidable{ Shape{ ShapeType::CIRCLE, Shape::Circle{ 8.0f } } });
         despawn_right.add(id, DespawnFarRight{});
         despawn_left.add(id, DespawnFarLeft{});
+        bullet_list.add(id, Bullet{10});
 
         return id;
     }
@@ -274,6 +286,45 @@ struct GameLevel{
             stats->owned.push_back(*power);
 
             to_delete.push_back(b);
+        }
+
+        if( shield_list.contains(a) && bullet_list.contains(b) ) {
+            auto &shield = shield_list.get(a);
+            auto &bullet = bullet_list.get(b);
+
+            shield->ammount -= bullet->damage;
+
+            to_delete.push_back(b);
+        }
+    }
+
+
+    void do_death_check(){
+        auto mask = shield_list.mask;
+
+        vector<id_type> to_delete;
+        for( id_type id = 0; id != max_id; id ++){
+            if(!mask[id]) continue;
+
+            auto shield = shield_list.get(id);
+            if( shield->ammount < 0 ){
+                to_delete.push_back(id);
+            }
+        }
+
+        for(auto id: to_delete){
+            destroy(id);
+        }
+    }
+
+    void do_shield_regen(){
+        auto mask = shield_list.mask;
+
+        for( id_type id = 0; id != max_id; id ++){
+            if(!mask[id]) continue;
+
+            auto shield = shield_list.get(id);
+            shield->ammount +=  shield->regen * FRAME_TIME;
         }
     }
 
@@ -382,6 +433,14 @@ int main(){
     gl.collidable_list.add(id, Collidable{ Shape{ ShapeType::CIRCLE, Shape::Circle{ 20.0f } } });
     gl.despawn_left.add(id, DespawnFarLeft{});
     gl.powerup_list.add(id, Powerup{1.05, 0.0});
+
+    //enemy
+    id = gl.alloc_id();
+    gl.drawable_list.add(id, Drawable{20.0f, get_texture("enemy1.png"), 1.0f} );
+    gl.physical_list.add(id, Physical{ 1000, 500, -0.01, 0 } );
+    gl.collidable_list.add(id, Collidable{ Shape{ ShapeType::CIRCLE, Shape::Circle{ 40.0f } } });
+    gl.despawn_left.add(id, DespawnFarLeft{});
+    gl.shield_list.add(id, Shield{100, 0.0});
 
     while(! WindowShouldClose()){
         gl.step();
