@@ -6,9 +6,15 @@
 extern crate rlua;
 extern crate quickersort;
 extern crate nalgebra;
+extern crate rand;
 
 mod raylib;
 use raylib::{Texture2D, Rectangle, DrawTexturePro, Color};
+
+mod level_gen;
+#[allow(unused)]
+#[allow(bad_style)]
+use level_gen::*;
 
 #[allow(unused)]
 #[allow(bad_style)]
@@ -34,10 +40,21 @@ use storage::*;
 mod storage;
 
 
+use std::collections::HashMap;
 
 
 const FRAME_RATE: f32 = 60.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
+
+fn max_float(a: f32, b: f32) -> f32 {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+
 
 fn min_float(a: f32, b: f32) -> f32 {
     if a < b {
@@ -81,55 +98,6 @@ fn b_or(a: Vec<bool>, b: Vec<bool>) -> Vec<bool> {
             (b.len() > i && b[i]));
     }
     return ret;
-}
-
-fn do_file(state: &rlua::Lua, fname: &str) -> std::result::Result<(), rlua::Error> {
-    let mut file = std::fs::File::open(fname).unwrap();
-    let mut data = String::new();
-    use std::io::Read;
-    let _ = file.read_to_string(&mut data);
-
-    state.eval::<()>(data.as_str(), Some(fname))
-}
-
-fn load_string_from_table(state: &rlua::Table, name: &str, into: &mut String){
-    match state.get::<&str,String>(name) {
-        Ok(t) => *into = t.to_string(),
-        Err(_) => {},
-    };
-}
-
-fn load_number_from_table(state: &rlua::Table, name: &str, into: &mut f32){
-    match state.get::<&str,f32>(name) {
-        Ok(t) => *into = t,
-        Err(_) => {},
-    };
-}
-
-#[allow(unused)]
-fn load_entity(id: id_type,
-               table: &mut rlua::Table,
-               game_data: &std::sync::Arc<GameData>) {
-        /*
-    for pair in table.clone().pairs() {
-        let component_name: String;
-        let mut component_data: rlua::Table;
-
-        match pair {
-            Ok(tup) => {
-                component_name = tup.0;
-                component_data = tup.1;
-            },
-            _ => {
-                return;
-            },
-        }
-
-        match component_name.as_str() {
-            _ => print!("unrecognized component name {}\n",component_name),
-        };
-    }
-        */
 }
 
 #[derive(Clone)]
@@ -398,8 +366,10 @@ struct GameData{
     unused_ids: Vec<id_type>,
     max_id: i64,
 
-    frame_count: i64,
+    frame_count: u64,
     to_destroy: Vec<id_type>,
+
+    spawn_plan: Option<HashMap<u64, Vec<Spawner>>>,
 }
 
 impl GameData {
@@ -425,6 +395,7 @@ impl GameData {
 
             frame_count: 0,
             to_destroy: Vec::<id_type>::new(),
+            spawn_plan: None,
         }
     }
     fn destroy(&mut self, id: id_type){
@@ -465,6 +436,18 @@ impl GameData {
     }
 
     fn step(&mut self){
+        let frame = &self.frame_count.clone();
+        let plan = self.spawn_plan.clone().unwrap();
+        let olst = {
+            plan.get(&frame).clone()
+        };
+        if let Some(lst) = olst.clone() {
+            for spawner in lst {
+                #[allow(mutable_transmutes)]
+                let mut gd = unsafe{ &mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+                spawner.spawn(&mut gd);
+            }
+        }
         self.frame_count+=1;
 
         self.do_player_input();
@@ -703,11 +686,13 @@ impl GameData {
             if IsKeyDown(KEY_W) {
                 let mut phy = self.physical_list.get(id).unwrap().clone();
                 phy.y -= player_speed;
+                phy.y = max_float(phy.y, 40.0);
                 self.physical_list.add(id, phy);
             }
             if IsKeyDown(KEY_S) {
                 let mut phy = self.physical_list.get(id).unwrap().clone();
                 phy.y += player_speed;
+                phy.y = min_float(phy.y, GetScreenHeight() as f32 - 40.0);
                 self.physical_list.add(id, phy);
             }
 
@@ -758,7 +743,10 @@ impl GameData {
     }
 }
 
+
 fn main(){
+
+
     {
         //raylib configuration flags
         #[allow(unused_mut)]
@@ -773,46 +761,14 @@ fn main(){
         SetConfigFlags(flags);
     }
 
-    InitWindow(1200, 1000, "Dodgem");
+    InitWindow(1300, 750, "Dodgem");
     SetTargetFPS(FRAME_RATE as i32);
 
     let mut gl = GameData::new();
 
-    let mut id = gl.alloc_id();
-    //player
-    gl.drawable_list.add(id, DrawableBuilder::new()
-                         .texture_by_name("player.png".to_string())
-                         .layer(1.0)
-                         .build());
-    gl.physical_list.add(id, PhysicalBuilder::new()
-                         .x(100.0)
-                         .y(200.0)
-                         .build());
-    gl.controllable_list.add(id, PlayerControl{});
-    gl.collidable_list.add(id, Collidable{ radius: 40.0});
-    gl.player_stats_list.add(id, PlayerStats{
-        movement_speed: 15.0,
-        owned: vec![]
-    });
-    gl.weapon_list.add(id, WeaponBuilder::new()
-                       .fire_rate(0.25 * FRAME_RATE)
-                       .offset(80.0)
-                       .direction(1.0)
-                       .to_spawn(Bullet{damage: 10.0})
-                       .gun_cooldown_frames(10)
-                       .fire_velocity(1.0)
-                       .drawable(DrawableBuilder::new()
-                                 .texture_by_name("red_ball.png".to_string())
-                                 .layer(1.0)
-                                 .build())
-                       .build());
-    gl.shield_list.add(id, ShieldBuilder::new()
-                  .ammount(30.0)
-                  .regen(0.001)
-                  .build());
-
+    /*
     //powerup
-    id = gl.alloc_id();
+    let mut id = gl.alloc_id();
     gl.drawable_list.add(id, DrawableBuilder::new()
                          .texture_by_name("fire_rate_up.png".to_string())
                          .layer(1.0)
@@ -860,40 +816,9 @@ fn main(){
                               .build());
     //gl.auto_fire_list.add(id, AutoFire{});
 
-    //enemy
-    id = gl.alloc_id();
-    gl.drawable_list.add(id, DrawableBuilder::new()
-                         .texture_by_name("enemy1.png".to_string())
-                         .layer(1.0)
-                         .build());
-    gl.physical_list.add(id, PhysicalBuilder::new()
-                         .x(1000.0)
-                         .y(200.0)
-                         .xvel(-0.01)
-                         .build());
-    gl.collidable_list.add(id, Collidable{radius:40.0 });
-    gl.despawn_left.add(id, DespawnFarLeft{});
-    gl.shield_list.add(id, ShieldBuilder::new()
-                       .ammount(10.0)
-                       .regen(0.0)
-                       .build());
-    gl.weapon_list.add(id, WeaponBuilder::new()
-                       .fire_rate(2.0*FRAME_RATE)
-                       .fire_velocity(0.4)
-                       .direction(-1.0)
-                       .offset(80.0)
-                       .gun_cooldown_frames(30)
-                       .drawable(DrawableBuilder::new()
-                                 .texture_by_name("red_ball.png".to_string())
-                                 .layer(1.0)
-                                 .build())
-                       .build());
-    gl.sine_movement_list.add(id, SineMovementBuilder::new()
-                              .frequency(0.8)
-                              .amplitude(9.0)
-                              .build());
-    gl.auto_fire_list.add(id, AutoFire{});
+    */
 
+    gl.spawn_plan = Some(gen_level(10.0, 100.0));
 
     while ! WindowShouldClose() {
         gl.step();
