@@ -1,0 +1,21 @@
+[package]
+name = "ludum_dare_40"
+version = "0.1.0"
+authors = ["zack <zwparchman@gmail.com>"]
+
+[dependencies]
+libc = "*"
+lazy_static = "*"
+cached = "0.4.1"
+nalgebra = "0.13.1"
+
+rlua = "0.9.5"
+quickersort = "3.0"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+debug = true
+lto = true
