@@ -745,8 +745,6 @@ impl GameData {
 
 
 fn main(){
-
-
     {
         //raylib configuration flags
         #[allow(unused_mut)]
@@ -765,58 +763,6 @@ fn main(){
     SetTargetFPS(FRAME_RATE as i32);
 
     let mut gl = GameData::new();
-
-    /*
-    //powerup
-    let mut id = gl.alloc_id();
-    gl.drawable_list.add(id, DrawableBuilder::new()
-                         .texture_by_name("fire_rate_up.png".to_string())
-                         .layer(1.0)
-                         .build());
-    gl.physical_list.add(id, PhysicalBuilder::new()
-                         .x(800.0)
-                         .y(200.0)
-                         .xvel(-0.1)
-                         .build());
-    gl.collidable_list.add(id, Collidable{ radius: 40.0 });
-    gl.despawn_left.add(id, DespawnFarLeft{});
-    gl.powerup_list.add(id, Powerup{regen_increase: 1.05, fire_rate_increase: 0.0});
-
-    //enemy
-    id = gl.alloc_id();
-    gl.drawable_list.add(id, DrawableBuilder::new()
-                         .texture_by_name("enemy1.png".to_string())
-                         .layer(1.0)
-                         .build());
-    gl.physical_list.add(id, PhysicalBuilder::new()
-                         .x(1000.0)
-                         .y(500.0)
-                         .xvel(-0.01)
-                         .build());
-    gl.collidable_list.add(id, Collidable{ radius: 40.0 });
-    gl.despawn_left.add(id, DespawnFarLeft{});
-    gl.shield_list.add(id, ShieldBuilder::new()
-                       .ammount(10.0)
-                       .regen(0.0)
-                       .build());
-    gl.weapon_list.add(id, WeaponBuilder::new()
-                       .fire_rate(2.0*FRAME_RATE)
-                       .fire_velocity(0.4)
-                       .direction(-1.0)
-                       .offset(80.0)
-                       .gun_cooldown_frames(1)
-                       .drawable(DrawableBuilder::new()
-                                 .texture_by_name("red_ball.png".to_string())
-                                 .layer(1.0)
-                                 .build())
-                       .build());
-    gl.sine_movement_list.add(id, SineMovementBuilder::new()
-                              .frequency(1.0)
-                              .amplitude(6.0)
-                              .build());
-    //gl.auto_fire_list.add(id, AutoFire{});
-
-    */
 
     gl.spawn_plan = Some(gen_level(10.0, 100.0));
 

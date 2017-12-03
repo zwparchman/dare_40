@@ -2,6 +2,7 @@
 use *;
 
 use rand;
+use rand::Rng;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -207,7 +208,7 @@ fn gen_player() -> Prefab{
         .build()
 }
 
-fn gen_enemy_1(x: f32, y: f32) -> Prefab{
+fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
                   .texture_by_name("enemy1.png".to_string())
@@ -216,7 +217,7 @@ fn gen_enemy_1(x: f32, y: f32) -> Prefab{
         .physical(PhysicalBuilder::new()
                            .x(x)
                            .y(y)
-                           .xvel(-0.025)
+                           .xvel(-0.025+ rng.next_f32()*0.01)
                            .build())
         .auto_fire(AutoFire{})
         .collidable(Collidable{ radius: 40.0})
@@ -224,13 +225,13 @@ fn gen_enemy_1(x: f32, y: f32) -> Prefab{
                  .ammount(11.0)
                  .build())
         .sine_movement( SineMovementBuilder::new()
-                        .amplitude(40.0)
-                        .frequency(0.5)
+                        .amplitude(20.0 + rng.next_f32()*20.0 )
+                        .frequency(0.5 + rng.next_f32() * 2.0 )
                         .build())
         .weapon( WeaponBuilder::new()
                  .to_spawn(Bullet{damage: 10.0})
-                 .fire_rate(2.0*FRAME_RATE)
-                 .fire_velocity(0.4)
+                 .fire_rate(2.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .fire_velocity(0.4 + rng.next_f32() * 0.2)
                  .direction(-1.0)
                  .offset(80.0)
                  .gun_cooldown_frames(1)
@@ -246,12 +247,12 @@ fn gen_enemy_1(x: f32, y: f32) -> Prefab{
 pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
     let mut ret = HashMap::<u64,Vec<Spawner>>::new();
 
-    let rng = rand::isaac::Isaac64Rng::new_unseeded();
+    let mut rng = rand::isaac::Isaac64Rng::new_unseeded();
 
     let mut spawner = Spawner::new();
     spawner.prefabs.push(gen_player());
-    spawner.prefabs.push(gen_enemy_1(800.0, 200.0));
-    spawner.prefabs.push(gen_enemy_1(800.0, 300.0));
+    spawner.prefabs.push(gen_enemy_1(800.0, 200.0, &mut rng));
+    spawner.prefabs.push(gen_enemy_1(800.0, 300.0, &mut rng));
     ret.insert(0, vec![spawner]);
     /*
     let mut cur = 0.0;
