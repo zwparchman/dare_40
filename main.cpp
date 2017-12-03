@@ -9,6 +9,7 @@
 #include <optional>
 #include <memory>
 #include <lua.h>
+#include <math.h>
 
 
 using namespace std;
@@ -103,6 +104,18 @@ vector<bool> operator|(const vector<bool> &lhs, const vector<bool> &rhs){
     return ret;
 }
 
+
+struct SineMovement {
+    float frequency=1, step=0, amplitude=0;
+};
+
+struct SineMovementBuilder {
+    BHDR(SineMovement);
+
+    BSET(SineMovementBuilder, amplitude, float);
+    BSET(SineMovementBuilder, frequency, float);
+    BSET(SineMovementBuilder, step, float);
+};
 
 
 struct Physical{
@@ -255,6 +268,7 @@ struct GameLevel{
     HashStorage<PlayerStats> player_stats_list;
     HashStorage<Weapon> weapon_list;
     HashStorage<AutoFire> auto_fire_list;
+    HashStorage<SineMovement> sine_movement_list;
 
     void destroy(id_type id){
         auto helper = [&](auto &x){x.remove(id);};
@@ -300,6 +314,7 @@ struct GameLevel{
         frame_count++;
 
         do_player_input();
+        do_sine_movement();
         do_movement();
         do_despawn();
         do_collision();
@@ -589,6 +604,28 @@ struct GameLevel{
         }
     }
 
+    void do_sine_movement(){
+        auto mask = sine_movement_list.mask;
+        for(id_type id = 0; id < max_id; id++){
+            if( !mask[id] ) continue;
+
+            auto &phy = physical_list.get(id);
+            auto &sine = sine_movement_list.get(id);
+
+            float freq = sine->frequency;
+            float amplitude = sine->amplitude;
+            float step =  sine->step;
+
+            float last = amplitude * sin(3.14 * freq * (step-1)/FRAME_RATE);
+            float curr = amplitude * sin(3.14 * freq * (step)/FRAME_RATE);
+            float diff = curr - last;
+
+            sine->step++;
+
+            phy->y += diff;
+        }
+    }
+
     void do_movement(){
         for( auto &phy_opt : physical_list ){
             if ( phy_opt ){
@@ -634,7 +671,6 @@ int main(){
                   .regen(0.001)
                   .build());
 
-    //*
     //powerup
     id = gl.alloc_id();
     gl.drawable_list.add(id, DrawableBuilder{}
@@ -660,7 +696,7 @@ int main(){
                        .regen(0)
                        .build());
     gl.weapon_list.add(id, WeaponBuilder{}
-                       .fire_rate(0.25*FRAME_RATE)
+                       .fire_rate(2.0*FRAME_RATE)
                        .fire_velocity(0.4)
                        .to_right(false)
                        .offset(80)
@@ -670,13 +706,16 @@ int main(){
                                  .layer(1.0)
                                  .build())
                        .build());
+    gl.sine_movement_list.add(id, SineMovementBuilder{}
+                              .frequency(1)
+                              .amplitude(60)
+                              .build());
     gl.auto_fire_list.add(id, AutoFire{});
-    // */
 
     while(! WindowShouldClose()){
         gl.step();
 
-        ClearBackground(RAYWHITE);
+        ClearBackground(BLACK);
         BeginDrawing();
         DrawFPS(3,3);
         gl.draw();
