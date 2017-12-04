@@ -99,6 +99,14 @@ pub fn DrawFPS(x: i32, y: i32) {
 
 #[allow(unused)]
 #[allow(bad_style)]
+pub fn DrawCircle(cx: i32, cy: i32, r: f32, c:Color) {
+    unsafe{
+        raylib_raw::DrawCircle(cx, cy, r, c);
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
 pub fn DrawRectangle(posX: i32, posY: i32, width: i32, height: i32, color: Color) {
     unsafe{
         raylib_raw::DrawRectangle(posX, posY, width, height, color);

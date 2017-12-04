@@ -212,7 +212,7 @@ fn gen_player() -> Prefab{
                            .y(200.0)
                            .build())
         .controllable(PlayerControl{})
-        .collidable(Collidable{ radius: 40.0})
+        .collidable(Collidable{ radius: 25.0})
         .player_stats( PlayerStats{
             movement_speed: 15.0,
             base_speed: 15.0,
@@ -225,6 +225,7 @@ fn gen_player() -> Prefab{
                  .build())
         .weapon( WeaponBuilder::new()
                  .fire_rate(0.2*FRAME_RATE)
+                 .fire_velocity(300.0)
                  .prefab(PrefabBuilder::new()
                            .physical(PhysicalBuilder::new().build())
                            .team(Team{team:0})
@@ -236,7 +237,6 @@ fn gen_player() -> Prefab{
                                      .layer(1.0)
                                      .build())
                            .build())
-                 .fire_velocity(0.4)
                  .offset(80.0)
                  .gun_cooldown_frames(1)
                  .build())
@@ -253,7 +253,7 @@ fn gen_fire_damage_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -
         .physical(PhysicalBuilder::new()
                   .x(x)
                   .y(y)
-                  .xvel(-0.1)
+                  .xvel(-200.0)
                   .build())
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
@@ -273,7 +273,7 @@ fn gen_regen_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Pref
         .physical(PhysicalBuilder::new()
                   .x(x)
                   .y(y)
-                  .xvel(-0.1)
+                  .xvel(-200.0)
                   .build())
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
@@ -293,7 +293,7 @@ fn gen_shield_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Pre
         .physical(PhysicalBuilder::new()
                   .x(x)
                   .y(y)
-                  .xvel(-0.1)
+                  .xvel(-200.0)
                   .build())
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
@@ -313,7 +313,7 @@ fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> 
         .physical(PhysicalBuilder::new()
                   .x(x)
                   .y(y)
-                  .xvel(-0.1)
+                  .xvel(-200.0)
                   .build())
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
@@ -323,6 +323,57 @@ fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> 
                  .build())
         .build()
 }
+
+fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("enemy2.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                           .x(x)
+                           .y(y)
+                           .xvel(-150.5+ rng.next_f32()*0.01)
+                           .build())
+        .auto_fire(AutoFire{})
+        .collidable(Collidable{ radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .death_sound(DeathSoundBuilder::new()
+                     .sound_by_name("explosion001.wav".to_string())
+                     .build())
+        .shield( ShieldBuilder::new()
+                 .ammount(11.0)
+                 .build())
+        .sine_movement( SineMovementBuilder::new()
+                        .amplitude(20.0 + rng.next_f32()*20.0 )
+                        .frequency(0.5 + rng.next_f32() * 2.0 )
+                        .build())
+        .weapon( WeaponBuilder::new()
+                 .fire_rate(3.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .prefab(PrefabBuilder::new()
+                           .team(Team{team:1})
+                           .despawn_left(DespawnFarLeft{})
+                           .bullet(Bullet{damage: 10.0})
+                           .physical(PhysicalBuilder::new().build())
+                           .collidable(Collidable{radius: 8.0})
+                           .sine_movement(SineMovementBuilder::new()
+                                          .amplitude(30.0)
+                                          .frequency(2.0)
+                                          .build())
+                           .drawable(DrawableBuilder::new()
+                                     .texture_by_name("green-ball.png".to_string())
+                                     .layer(1.0)
+                                     .build())
+                           .build())
+                 .fire_velocity(-300.0 - rng.next_f32() * 0.2)
+                 .offset(-10.0)
+                 .gun_cooldown_frames(rng.gen_range(1,80))
+                 .build())
+        .team(Team{team:1})
+        .build()
+}
+
+
 
 fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
@@ -336,7 +387,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .xvel(-150.5+ rng.next_f32()*0.01)
                            .build())
         .auto_fire(AutoFire{})
-        .collidable(Collidable{ radius: 40.0})
+        .collidable(Collidable{ radius: 20.0})
         .despawn_left(DespawnFarLeft{})
         .death_sound(DeathSoundBuilder::new()
                      .sound_by_name("explosion001.wav".to_string())
@@ -361,7 +412,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                                      .layer(1.0)
                                      .build())
                            .build())
-                 .fire_velocity(-0.2 - rng.next_f32() * 0.2)
+                 .fire_velocity(-300.0 - rng.next_f32() * 0.2)
                  .offset(-80.0)
                  .gun_cooldown_frames(1)
                  .build())
@@ -392,6 +443,7 @@ pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
         for j in 0..4 {
             spawner.prefabs.push(gen_enemy_1(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
         }
+        spawner.prefabs.push(gen_enemy_2(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
         spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
         ret.insert(150*i, vec![spawner.clone()]);
     }

@@ -3,7 +3,6 @@
 #[macro_use] extern crate lazy_static;
 
 // extern crate hibitset;
-extern crate rlua;
 extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
@@ -723,12 +722,15 @@ impl GameData {
         let a_phy = self.physical_list.get(a).unwrap();
         let b_phy = self.physical_list.get(b).unwrap();
 
-        let a_pos = Vector2::new( a_phy.x, a_phy.y);
-        let b_pos = Vector2::new( b_phy.x, b_phy.y);
-
         let a_col = self.collidable_list.get(a).unwrap();
         let b_col = self.collidable_list.get(b).unwrap();
 
+
+
+        let a_pos = Vector2::new( a_phy.x , a_phy.y );
+        let b_pos = Vector2::new( b_phy.x , b_phy.y );
+
+        //DrawCircleV( &Vector2f::new(a_pos.x + 2.0*a_col.radius , a_pos.y), a_col.radius, Color{r:255, g:255, b:255, a:255});
         return CheckCollisionCircles(&a_pos, a_col.radius,
                                      &b_pos, b_col.radius);
     }
