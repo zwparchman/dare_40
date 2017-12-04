@@ -98,11 +98,33 @@ pub fn DrawFPS(x: i32, y: i32) {
 
 #[allow(unused)]
 #[allow(bad_style)]
+pub fn DrawRectangle(posX: i32, posY: i32, width: i32, height: i32, color: Color) {
+    unsafe{
+        raylib_raw::DrawRectangle(posX, posY, width, height, color);
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn DrawRectangleLines(posX: i32, posY: i32, width: i32, height: i32, color: Color) {
+    unsafe{
+        raylib_raw::DrawRectangleLines(posX, posY, width, height, color);
+    }
+}
+
+
+
+
+
+#[allow(unused)]
+#[allow(bad_style)]
 pub fn SetTargetFPS(val: i32) {
     unsafe{
         return raylib_raw::SetTargetFPS(val);
     }
 }
+
+
 
 #[allow(unused)]
 #[allow(bad_style)]

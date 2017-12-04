@@ -8,6 +8,8 @@ extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
 
+use std::f32;
+
 mod raylib;
 use raylib::{Texture2D, Rectangle, DrawTexturePro, Color};
 
@@ -45,6 +47,9 @@ use std::collections::HashMap;
 
 const FRAME_RATE: f32 = 60.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
+
+
+const SLOWDOWN_FACTOR: f32 = 0.6;
 
 fn max_float(a: f32, b: f32) -> f32 {
     if a > b {
@@ -101,7 +106,7 @@ fn b_or(a: Vec<bool>, b: Vec<bool>) -> Vec<bool> {
 }
 
 #[derive(Clone)]
-struct SineMovement {
+pub struct SineMovement {
     frequency: f32,
     step: i32,
     amplitude: f32,
@@ -135,7 +140,7 @@ impl SineMovementBuilder {
 }
 
 #[derive(Clone)]
-struct Physical{
+pub struct Physical{
     x: f32,
     y: f32,
     xvel: f32,
@@ -174,7 +179,7 @@ impl PhysicalBuilder{
 }
 
 #[derive(Clone)]
-struct Drawable{
+pub struct Drawable{
     texture: Arc<Texture2D>,
     layer: f32,
 }
@@ -206,49 +211,87 @@ impl DrawableBuilder {
 }
 
 #[derive(Clone)]
-struct Collidable{
+pub struct Collidable{
     radius: f32,
 }
 
 #[derive(Clone)]
-struct PlayerControl{}
+pub struct PlayerControl{}
 #[derive(Clone)]
-struct DespawnFarRight{}
+pub struct DespawnFarRight{}
 #[derive(Clone)]
-struct DespawnFarLeft{}
+pub struct DespawnFarLeft{}
 
 #[derive(Clone)]
-struct Bullet{
+pub struct Bullet{
     damage: f32,
 }
 
 #[derive(Clone)]
-struct Powerup {
+pub struct Powerup {
     regen_increase: f32,
     fire_rate_increase: f32,
+    fire_damage_increase: f32,
 }
 
 #[derive(Clone)]
-struct PlayerStats {
+pub struct PowerupBuilder {
+    thing: Powerup,
+}
+
+impl PowerupBuilder {
+    fn new() -> Self {
+        Self { thing: Powerup{
+            regen_increase: 0.0,
+            fire_rate_increase: 0.0,
+            fire_damage_increase: 0.0,
+        }}
+    }
+
+    fn fire_rate_increase(mut self, val: f32) -> Self{
+        self.thing.fire_rate_increase = val;
+        self
+    }
+
+    fn regen_increase(mut self, val: f32) -> Self{
+        self.thing.fire_rate_increase = val;
+        self
+    }
+
+    fn fire_damage_increase(mut self, val: f32) -> Self{
+        self.thing.fire_rate_increase = val;
+        self
+    }
+
+    fn build(self) -> Powerup {
+        return self.thing;
+    }
+}
+
+
+
+const PART_INSTALLED_AT: i32 = 120;
+#[derive(Clone)]
+pub struct PlayerStats {
     movement_speed: f32,
-    owned: Vec<Powerup>,
+    base_speed: f32,
+    owned: Vec<Prefab>,
+    install_progress: i32,
 }
 
 #[derive(Clone)]
-struct Weapon {
+pub struct Weapon {
     fire_rate: f32,
     fire_velocity: f32,
     gun_cooldown_frames : i32,
-    to_spawn : Bullet,
-
-    drawable: Option<Drawable>,
+    prefab : Arc<Prefab>,
 
     direction: f32,
     offset: f32,
 }
 
 #[derive(Clone)]
-struct WeaponBuilder{
+pub struct WeaponBuilder{
     thing: Weapon,
 }
 
@@ -258,8 +301,7 @@ impl WeaponBuilder {
             fire_rate: 1.0,
             fire_velocity: 0.1,
             gun_cooldown_frames: 0,
-            to_spawn: Bullet{damage: 10.0},
-            drawable: None,
+            prefab: Arc::new(PrefabBuilder::new().build()),
             direction: 1.0,
             offset: 40.0,
         }}
@@ -279,18 +321,8 @@ impl WeaponBuilder {
         self
     }
 
-    fn to_spawn(mut self, val: Bullet) -> Self{
-        self.thing.to_spawn = val;
-        self
-    }
-
-    fn drawable(mut self, val: Drawable) -> Self{
-        self.thing.drawable = Some(val);
-        self
-    }
-
-    fn direction(mut self, val: f32) -> Self{
-        self.thing.direction = val;
+    fn prefab(mut self, val: Prefab) -> Self{
+        self.thing.prefab = Arc::new(val);
         self
     }
 
@@ -306,22 +338,22 @@ impl WeaponBuilder {
 }
 
 #[derive(Clone)]
-struct Shield {
+pub struct Shield {
     max_shield: f32,
     ammount: f32,
     regen: f32,
 }
 
 #[derive(Clone)]
-struct ShieldBuilder {
+pub struct ShieldBuilder {
     thing: Shield,
 }
 
 impl ShieldBuilder {
     fn new() -> Self {
         Self{ thing: Shield{
-            max_shield: 100.0,
-            ammount: 100.0,
+            max_shield: 10.0,
+            ammount: 10.0,
             regen: 0.0,
         }}
     }
@@ -333,6 +365,7 @@ impl ShieldBuilder {
 
     fn ammount(mut self, val: f32) -> Self{
         self.thing.ammount = val;
+        self.thing.max_shield = max_float(self.thing.max_shield, val);
         self
     }
 
@@ -346,7 +379,15 @@ impl ShieldBuilder {
 }
 
 #[derive(Clone)]
-struct AutoFire{}
+pub struct AutoFire{}
+
+#[derive(Clone)]
+pub struct Install{}
+
+#[derive(Clone)]
+pub struct Team{team: i32}
+
+
 
 struct GameData{
     drawable_list: VectorStorage<Drawable>,
@@ -362,6 +403,8 @@ struct GameData{
     weapon_list: VectorStorage<Weapon>,
     auto_fire_list: VectorStorage<AutoFire>,
     sine_movement_list: VectorStorage<SineMovement>,
+    team_list: VectorStorage<Team>,
+    install_list: VectorStorage<Install>,
 
     unused_ids: Vec<id_type>,
     max_id: i64,
@@ -389,6 +432,8 @@ impl GameData {
             weapon_list: VectorStorage::<Weapon>::new(),
             auto_fire_list: VectorStorage::<AutoFire>::new(),
             sine_movement_list: VectorStorage::<SineMovement>::new(),
+            team_list: VectorStorage::<Team>::new(),
+            install_list: VectorStorage::<Install>::new(),
 
             unused_ids: Vec::<id_type>::new(),
             max_id: 0,
@@ -412,6 +457,7 @@ impl GameData {
         self.weapon_list.remove(id);
         self.auto_fire_list.remove(id);
         self.sine_movement_list.remove(id);
+        self.team_list.remove(id);
 
         self.free_id(id);
     }
@@ -436,22 +482,28 @@ impl GameData {
     }
 
     fn step(&mut self){
-        let frame = &self.frame_count.clone();
-        let plan = self.spawn_plan.clone().unwrap();
-        let olst = {
-            plan.get(&frame).clone()
-        };
-        if let Some(lst) = olst.clone() {
-            for spawner in lst {
-                #[allow(mutable_transmutes)]
-                let mut gd = unsafe{ &mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
-                spawner.spawn(&mut gd);
+        {
+            let frame = &self.frame_count.clone();
+            let mut plan = self.spawn_plan.clone().unwrap();
+            let olst = {
+                plan.remove(&frame).clone()
+            };
+            if let Some(lst) = olst.clone() {
+                print!("Spawning on frame {}\n", frame);
+                for spawner in lst {
+                    #[allow(mutable_transmutes)]
+                    let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+                    spawner.spawn(&mut gd);
+                }
             }
         }
+
+
         self.frame_count+=1;
 
         self.do_player_input();
         self.do_sine_movement();
+        self.do_install();
         self.do_movement();
         self.do_despawn();
         self.do_collision();
@@ -490,8 +542,16 @@ impl GameData {
                 weapon.gun_cooldown_frames <= 0
             };
 
+            let prefab = {
+                let ref weapon = self.weapon_list.get(id).unwrap();
+                weapon.prefab.clone()
+            };
+
+
             if fire {
-                let bul_id = self.spawn_bullet();
+                #[allow(mutable_transmutes)]
+                let mut gd = unsafe{ &mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+                let bul_id = prefab.spawn(&mut gd);
 
                 let mut weapon = self.weapon_list.get(id).unwrap();
                 weapon.gun_cooldown_frames = weapon.fire_rate as i32;
@@ -499,8 +559,6 @@ impl GameData {
                 let mut bul_phy = self.physical_list.get(bul_id).unwrap().clone();
 
                 let phy1 = self.physical_list.get(id).unwrap().clone();
-
-                self.drawable_list.add(bul_id, weapon.clone().drawable.unwrap().clone());
 
                 bul_phy.xvel = weapon.direction * weapon.fire_velocity;
 
@@ -513,10 +571,7 @@ impl GameData {
         }
     }
 
-    fn draw(&mut self){
-        let mask = b_and(self.drawable_list.mask.clone() , self.physical_list.mask.clone());
-        for id in 0..self.max_id {
-            if  ! mask[id as usize] { continue; }
+    fn draw_by_id( &self, id: id_type) {
             let drw = self.drawable_list.get(id).unwrap().clone();
             let pos = self.physical_list.get(id).unwrap().clone();
 
@@ -534,7 +589,81 @@ impl GameData {
                             Vector2::new(0.0, 0.0),
                             0.0,
                             Color{r:255, g:255, b:255, a:255});
+    }
+
+    fn draw(&mut self){
+        let mask = b_and(self.drawable_list.mask.clone() , self.physical_list.mask.clone());
+        for id in 0..self.max_id {
+            if  ! mask[id as usize] { continue; }
+
+            self.draw_by_id(id);
         }
+        //draw UI
+        //
+        //draw shields
+        DrawRectangle(1250, 80, 40, (self.get_player_shield_fraction()*100.0) as i32, Color{r:50, g:50, b:255, a:255});
+        DrawRectangleLines(1250, 80, 40, 100, Color{r:50, g:50, b:255, a:255});
+
+        let cargo = self.get_player_cargo();
+        for i in 0..std::cmp::min(4, cargo.len()){
+            #[allow(mutable_transmutes)]
+            let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+
+            let mut prefab = cargo[i].clone();
+            prefab.physical = Some(PhysicalBuilder::new()
+                .x(1250.0)
+                .y(i as f32 *50.0+200.0)
+                .build());
+
+            let id = prefab.spawn(gd);
+            self.to_destroy.push(id);
+            self.draw_by_id(id);
+        }
+        self.do_destroy();
+
+        //draw install bar
+        DrawRectangle(1250, 400, 40, (self.get_player_install_fraction()*100.0) as i32, Color{r:200, g:200, b:200, a:255});
+        DrawRectangleLines(1250, 400, 40, 100, Color{r:200, g:200, b:200, a:255});
+
+
+    }
+
+    fn get_player_cargo(&mut self) -> Vec<Prefab> {
+        let mask = self.controllable_list.mask.clone();
+
+        for id in 0..mask.len() as id_type {
+            if !mask[id as usize]{ continue; }
+
+            let ship_stats = self.player_stats_list.get(id).unwrap().clone();
+            return ship_stats.owned;
+        }
+        return vec![];
+    }
+
+    fn get_player_install_fraction(&mut self) -> f32{
+        let mask = self.controllable_list.mask.clone();
+
+        for id in 0..mask.len() as id_type {
+            if !mask[id as usize]{ continue; }
+
+            let stats = self.player_stats_list.get(id).unwrap().clone();
+            return stats.install_progress as f32 / PART_INSTALLED_AT as f32;
+        }
+        return 0.0;
+    }
+
+
+
+    fn get_player_shield_fraction(&mut self) -> f32{
+        let mask = self.controllable_list.mask.clone();
+
+        for id in 0..mask.len() as id_type {
+            if !mask[id as usize]{ continue; }
+
+            let shield = self.shield_list.get(id).unwrap().clone();
+            return shield.ammount / shield.max_shield;
+        }
+        return 0.0;
     }
 
     fn spawn_bullet(&mut self) -> id_type {
@@ -571,8 +700,11 @@ impl GameData {
             let mut stats = self.player_stats_list.get(a).unwrap().clone();
             let power = self.powerup_list.get(b).unwrap().clone();
 
-            stats.movement_speed *= 0.95;
-            stats.owned.push(power);
+            stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
+
+            let mut prefab = self.id_to_prefab(b);
+            prefab.physical = None;
+            stats.owned.push(prefab);
 
             self.to_destroy.push(b);
 
@@ -580,13 +712,56 @@ impl GameData {
         }
 
         if self.shield_list.contains(a) && self.bullet_list.contains(b) {
-            let mut shield = self.shield_list.get(a).unwrap();
-            let bullet = self.bullet_list.get(b).unwrap().clone();
+            let a_phy = self.physical_list.get(a).unwrap();
+            let b_phy = self.physical_list.get(a).unwrap();
 
-            shield.ammount -= bullet.damage;
-            self.shield_list.add(a, shield);
+            if  self.team_list.get(a).unwrap_or(Team{team:-1}).clone().team != 
+                self.team_list.get(b).unwrap_or(Team{team:-2}).clone().team {
 
-            self.to_destroy.push(b);
+                let mut shield = self.shield_list.get(a).unwrap();
+                let bullet = self.bullet_list.get(b).unwrap().clone();
+
+                shield.ammount -= bullet.damage;
+                self.shield_list.add(a, shield);
+
+                self.to_destroy.push(b);
+            }
+        }
+    }
+
+    fn do_install(&mut self){
+        let mask = b_and(self.player_stats_list.mask.clone(), self.install_list.mask.clone());
+
+        for id in 0..mask.len() as id_type {
+            if ! mask[id as usize ] { continue; }
+
+            let mut stats = self.player_stats_list.get(id).unwrap();
+
+            if stats.owned.len() == 0 { 
+                stats.install_progress = 0; 
+                self.player_stats_list.add(id, stats);
+                continue;
+            }
+
+
+            stats.install_progress += 1;
+
+            if stats.install_progress >= PART_INSTALLED_AT {
+                stats.install_progress = 0;
+                let upgrade_prefab = stats.owned[0].clone();
+                stats.install_progress == 0;
+
+                //apply the upgrade
+                let mut weapon = self.weapon_list.get(id).unwrap();
+
+                weapon.fire_rate *= upgrade_prefab.powerup.unwrap().fire_rate_increase;
+
+                self.weapon_list.add(id, weapon);
+                stats.owned.remove(0);
+            }
+
+            stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
+            self.player_stats_list.add(id, stats);
         }
     }
 
@@ -664,7 +839,7 @@ impl GameData {
             if  !mask[id as usize] { continue; }
 
             let phy = self.physical_list.get(id).unwrap().clone();
-            if self.despawn_left.contains(id) && phy.x < 20.0 {
+            if self.despawn_left.contains(id) && phy.x < -80.0 {
                 self.to_destroy.push(id);
             } 
             if self.despawn_right.contains(id) && phy.x > GetScreenWidth() as f32 + 120.0 {
@@ -696,12 +871,28 @@ impl GameData {
                 self.physical_list.add(id, phy);
             }
 
+            if IsKeyDown(KEY_D) {
+                let mut phy = self.physical_list.get(id).unwrap().clone();
+                phy.x += player_speed;
+                phy.x = min_float(phy.x, GetScreenWidth() as f32 - 140.0);
+                self.physical_list.add(id, phy);
+            }
+
+            if IsKeyDown(KEY_A) {
+                let mut phy = self.physical_list.get(id).unwrap().clone();
+                phy.x -= player_speed;
+                phy.x = max_float(phy.x, 50.0);
+                self.physical_list.add(id, phy);
+            }
+
             if IsKeyPressed(KEY_SPACE) {
                 self.auto_fire_list.add(id, AutoFire{});
+                self.install_list.remove(id);
             }
 
             if IsKeyReleased(KEY_SPACE) {
                 self.auto_fire_list.remove(id);
+                self.install_list.add(id, Install{});
             }
         }
     }
@@ -741,6 +932,57 @@ impl GameData {
             self.physical_list.add(id, phy);
         }
     }
+
+    fn id_to_prefab(&mut self, id: id_type) -> Prefab {
+        let mut ret = PrefabBuilder::new();
+        if let Some(val) = self.drawable_list.get(id) {
+            ret = ret.drawable(val);
+        }
+        if let Some(val) = self.physical_list.get(id) {
+            ret = ret.physical(val);
+        }
+        if let Some(val) = self.collidable_list.get(id) {
+            ret = ret.collidable(val);
+        }
+        if let Some(val) = self.controllable_list.get(id) {
+            ret = ret.controllable(val);
+        }
+        if let Some(val) = self.bullet_list.get(id) {
+            ret = ret.bullet(val);
+        }
+        if let Some(val) = self.shield_list.get(id) {
+            ret = ret.shield(val);
+        }
+        if let Some(val) = self.despawn_left.get(id) {
+            ret = ret.despawn_left(val);
+        }
+        if let Some(val) = self.despawn_right.get(id) {
+            ret = ret.despawn_right(val);
+        }
+        if let Some(val) = self.powerup_list.get(id) {
+            ret = ret.powerup(val);
+        }
+        if let Some(val) = self.player_stats_list.get(id) {
+            ret = ret.player_stats(val);
+        }
+        if let Some(val) = self.weapon_list.get(id) {
+            ret = ret.weapon(val);
+        }
+        if let Some(val) = self.auto_fire_list.get(id) {
+            ret = ret.auto_fire(val);
+        }
+        if let Some(val) = self.sine_movement_list.get(id) {
+            ret = ret.sine_movement(val);
+        }
+        if let Some(val) = self.team_list.get(id) {
+            ret = ret.team(val);
+        }
+        if let Some(val) = self.install_list.get(id) {
+            ret = ret.install(val);
+        }
+        return ret.build();
+    }
+
 }
 
 
