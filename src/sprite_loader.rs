@@ -13,3 +13,10 @@ fn load_texture(fname: String) -> Option<Arc<Texture2D>> = {
         return Some(Arc::new(opt));
     }
 }
+
+cached!{ LOAD_SOUND_CACHE >>
+fn load_sound(fname: String) -> Option<Arc<Sound>> = {
+        let opt = LoadSound(fname.as_str() );
+        return Some(Arc::new(opt));
+    }
+}

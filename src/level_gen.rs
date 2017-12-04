@@ -21,7 +21,8 @@ pub struct Prefab {
     pub auto_fire: Option<AutoFire>,
     pub sine: Option<SineMovement>,
     pub team: Option<Team>,
-    pub install: Option<Install>
+    pub install: Option<Install>,
+    pub death_sound: Option<DeathSound>,
 }
 
 impl Prefab {
@@ -73,6 +74,10 @@ impl Prefab {
         if let Some(val) = self.install.clone() {
             gd.install_list.add(id,val);
         }
+        if let Some(val) = self.death_sound.clone() {
+            gd.death_sound_list.add(id,val);
+        }
+
         return id;
     }
 }
@@ -100,6 +105,7 @@ impl PrefabBuilder{
             sine: None,
             team: None,
             install: None,
+            death_sound: None,
         }}
     }
 
@@ -163,8 +169,10 @@ impl PrefabBuilder{
         self.thing.install = Some(val);
         self
     }
-
-
+    pub fn death_sound(mut self, val:DeathSound) -> Self {
+        self.thing.death_sound = Some(val);
+        self
+    }
 
     pub fn build(self) -> Prefab {
         return self.thing
@@ -236,10 +244,10 @@ fn gen_player() -> Prefab{
         .build()
 }
 
-fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+fn gen_fire_damage_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
-                  .texture_by_name("fire_rate_up.png".to_string())
+                  .texture_by_name("damage-up.png".to_string())
                   .layer(1.0)
                   .build())
         .physical(PhysicalBuilder::new()
@@ -250,6 +258,67 @@ fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> 
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
         .powerup(PowerupBuilder::new()
+                 .sound_by_name("item-pickup.wav".to_string())
+                 .fire_rate_increase(1.05)
+                 .build())
+        .build()
+}
+
+fn gen_regen_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("shield-regen.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(x)
+                  .y(y)
+                  .xvel(-0.1)
+                  .build())
+        .collidable(Collidable{radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .powerup(PowerupBuilder::new()
+                 .sound_by_name("item-pickup.wav".to_string())
+                 .regen_increase(1.05)
+                 .build())
+        .build()
+}
+
+fn gen_shield_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("shield-up.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(x)
+                  .y(y)
+                  .xvel(-0.1)
+                  .build())
+        .collidable(Collidable{radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .powerup(PowerupBuilder::new()
+                 .sound_by_name("item-pickup.wav".to_string())
+                 .shield_increase(1.05)
+                 .build())
+        .build()
+}
+
+fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("fire-rate-up.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(x)
+                  .y(y)
+                  .xvel(-0.1)
+                  .build())
+        .collidable(Collidable{radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .powerup(PowerupBuilder::new()
+                 .sound_by_name("item-pickup.wav".to_string())
                  .fire_rate_increase(0.95)
                  .build())
         .build()
@@ -264,11 +333,14 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .physical(PhysicalBuilder::new()
                            .x(x)
                            .y(y)
-                           .xvel(-0.05+ rng.next_f32()*0.01)
+                           .xvel(-150.5+ rng.next_f32()*0.01)
                            .build())
         .auto_fire(AutoFire{})
         .collidable(Collidable{ radius: 40.0})
         .despawn_left(DespawnFarLeft{})
+        .death_sound(DeathSoundBuilder::new()
+                     .sound_by_name("explosion001.wav".to_string())
+                     .build())
         .shield( ShieldBuilder::new()
                  .ammount(11.0)
                  .build())
@@ -297,6 +369,14 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .build()
 }
 
+fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+    let a = gen_fire_rate_increase(x,y,&mut rng).clone();
+    let b = gen_fire_damage_increase(x,y,&mut rng).clone();
+    let c = gen_shield_increase(x,y,&mut rng).clone();
+    let d = gen_regen_increase(x,y,&mut rng).clone();
+    return rng.choose(&[a,b,c,d]).unwrap().clone();
+}
+
 //*
 pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
     let mut ret = HashMap::<u64,Vec<Spawner>>::new();
@@ -307,15 +387,12 @@ pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
     spawner.prefabs.push(gen_player());
     ret.insert(0, vec![spawner.clone()]);
 
-    for i in 1..10 {
+    for i in 1..100 {
         spawner = Spawner::new();
-        for j in 0..3 {
-            //spawner.prefabs.push(gen_enemy_1(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
-            spawner.prefabs.push(
-                gen_fire_rate_increase(1400.0,
-                                       rng.gen_range(0.0, 700.0),
-                                       &mut rng));
+        for j in 0..4 {
+            spawner.prefabs.push(gen_enemy_1(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
         }
+        spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
         ret.insert(150*i, vec![spawner.clone()]);
     }
     /*

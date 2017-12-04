@@ -18,6 +18,7 @@ pub use self::raylib_raw::Color;
 pub use self::raylib_raw::Image;
 pub use self::raylib_raw::Texture2D;
 pub use self::raylib_raw::Rectangle;
+pub use self::raylib_raw::Sound;
 
 ////////////////////////////////////////////////////////////
 // Image stuff
@@ -112,10 +113,6 @@ pub fn DrawRectangleLines(posX: i32, posY: i32, width: i32, height: i32, color: 
     }
 }
 
-
-
-
-
 #[allow(unused)]
 #[allow(bad_style)]
 pub fn SetTargetFPS(val: i32) {
@@ -123,8 +120,6 @@ pub fn SetTargetFPS(val: i32) {
         return raylib_raw::SetTargetFPS(val);
     }
 }
-
-
 
 #[allow(unused)]
 #[allow(bad_style)]
@@ -298,7 +293,33 @@ pub fn CheckCollisionCircles(center1: &Vector2f, radius1: f32,
     }
 }
 
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn LoadSound(s: &str) -> Sound {
+    unsafe{
+        let title_c = CString::new(s).unwrap();
+        raylib_raw::LoadSound(title_c.as_ptr()) 
+    }
+}
 
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn PlaySound(snd: &Sound) {
+    unsafe{
+        let base = snd as *const Sound;
+        let raw = ptr::read(base);
+        raylib_raw::PlaySound(raw);
+    }
+}
+
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn InitAudioDevice() {
+    unsafe{
+        raylib_raw::InitAudioDevice();
+    }
+}
 
 pub use self::raylib_raw::PI;
 pub use self::raylib_raw::DEG2RAD;

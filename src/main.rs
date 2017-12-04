@@ -35,7 +35,7 @@ type id_type=i64;
 use std::sync::{Arc, RwLock, Mutex, MutexGuard, TryLockResult, LockResult};
 #[allow(unused)]
 
-use sprite_loader::load_texture;
+use sprite_loader::*;
 mod sprite_loader;
 
 use storage::*;
@@ -207,8 +207,40 @@ impl DrawableBuilder {
     fn build(self) -> Drawable {
         return self.thing;
     }
-
 }
+
+#[derive(Clone)]
+pub struct DeathSound{
+    sound: Arc<Sound>,
+    volume: f32,
+}
+
+struct DeathSoundBuilder{
+    thing: DeathSound,
+}
+
+impl DeathSoundBuilder {
+    fn new() -> Self {
+        DeathSoundBuilder{ thing: DeathSound {
+            sound: load_sound("scilence.wav".to_string()).unwrap(),
+            volume: 1.0,
+        }}
+    }
+    fn volume(mut self, val: f32) -> Self{
+        self.thing.volume = val;
+        self
+    }
+    fn sound_by_name(mut self, val: String) -> Self{
+        self.thing.sound = load_sound(val).unwrap();
+        self
+    }
+
+    fn build(self) -> DeathSound  {
+        return self.thing;
+    }
+}
+
+
 
 #[derive(Clone)]
 pub struct Collidable{
@@ -232,6 +264,8 @@ pub struct Powerup {
     regen_increase: f32,
     fire_rate_increase: f32,
     fire_damage_increase: f32,
+    shield_increase: f32,
+    pickup_sound: Arc<Sound>,
 }
 
 #[derive(Clone)]
@@ -242,10 +276,17 @@ pub struct PowerupBuilder {
 impl PowerupBuilder {
     fn new() -> Self {
         Self { thing: Powerup{
-            regen_increase: 0.0,
-            fire_rate_increase: 0.0,
-            fire_damage_increase: 0.0,
+            regen_increase: 1.0,
+            fire_rate_increase: 1.0,
+            fire_damage_increase: 1.0,
+            shield_increase: 1.0,
+            pickup_sound: load_sound("silence.wav".to_string()).unwrap(),
         }}
+    }
+
+    fn sound_by_name(mut self, val: String) -> Self {
+        self.thing.pickup_sound = load_sound(val).unwrap();
+        self
     }
 
     fn fire_rate_increase(mut self, val: f32) -> Self{
@@ -254,12 +295,17 @@ impl PowerupBuilder {
     }
 
     fn regen_increase(mut self, val: f32) -> Self{
-        self.thing.fire_rate_increase = val;
+        self.thing.regen_increase = val;
         self
     }
 
     fn fire_damage_increase(mut self, val: f32) -> Self{
-        self.thing.fire_rate_increase = val;
+        self.thing.fire_damage_increase = val;
+        self
+    }
+
+    fn shield_increase(mut self, val: f32) -> Self{
+        self.thing.shield_increase = val;
         self
     }
 
@@ -405,6 +451,7 @@ struct GameData{
     sine_movement_list: VectorStorage<SineMovement>,
     team_list: VectorStorage<Team>,
     install_list: VectorStorage<Install>,
+    death_sound_list: VectorStorage<DeathSound>,
 
     unused_ids: Vec<id_type>,
     max_id: i64,
@@ -434,6 +481,7 @@ impl GameData {
             sine_movement_list: VectorStorage::<SineMovement>::new(),
             team_list: VectorStorage::<Team>::new(),
             install_list: VectorStorage::<Install>::new(),
+            death_sound_list: VectorStorage::<DeathSound>::new(),
 
             unused_ids: Vec::<id_type>::new(),
             max_id: 0,
@@ -458,6 +506,8 @@ impl GameData {
         self.auto_fire_list.remove(id);
         self.sine_movement_list.remove(id);
         self.team_list.remove(id);
+        self.install_list.remove(id);
+        self.death_sound_list.remove(id);
 
         self.free_id(id);
     }
@@ -607,7 +657,7 @@ impl GameData {
         let cargo = self.get_player_cargo();
         for i in 0..std::cmp::min(4, cargo.len()){
             #[allow(mutable_transmutes)]
-            let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+            let gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
 
             let mut prefab = cargo[i].clone();
             prefab.physical = Some(PhysicalBuilder::new()
@@ -666,18 +716,6 @@ impl GameData {
         return 0.0;
     }
 
-    fn spawn_bullet(&mut self) -> id_type {
-        let id = self.alloc_id();
-
-        self.physical_list.add(id, PhysicalBuilder::new().build());
-        self.collidable_list.add(id, Collidable{ radius: 40.0 });
-        self.despawn_right.add(id, DespawnFarRight{});
-        self.despawn_left.add(id, DespawnFarLeft{});
-        self.bullet_list.add(id, Bullet{damage:10.0});
-
-        return id;
-    }
-
     fn is_colliding(&mut self, a: id_type, b: id_type) -> bool {
         if self.physical_list.get(a).is_none() || self.physical_list.get(b).is_none() {
             return false;
@@ -706,6 +744,7 @@ impl GameData {
             prefab.physical = None;
             stats.owned.push(prefab);
 
+            PlaySound(&*power.pickup_sound);
             self.to_destroy.push(b);
 
             self.player_stats_list.add(a, stats);
@@ -774,6 +813,9 @@ impl GameData {
 
             let shield = self.shield_list.get(id).unwrap().clone();
             if shield.ammount < 0.0 {
+                if let Some(death_sound) = self.death_sound_list.get(id) {
+                    PlaySound(&death_sound.sound);
+                }
                 self.to_destroy.push(id);
             }
         }
@@ -927,8 +969,8 @@ impl GameData {
         for id in 0..self.max_id as id_type {
             if ! mask[id as usize] { continue; }
             let mut phy = self.physical_list.get(id).unwrap().clone();
-            phy.x += phy.xvel * FRAME_RATE;
-            phy.y += phy.yvel * FRAME_RATE;
+            phy.x += phy.xvel * FRAME_TIME;
+            phy.y += phy.yvel * FRAME_TIME;
             self.physical_list.add(id, phy);
         }
     }
@@ -980,6 +1022,10 @@ impl GameData {
         if let Some(val) = self.install_list.get(id) {
             ret = ret.install(val);
         }
+        if let Some(val) = self.death_sound_list.get(id) {
+            ret = ret.death_sound(val);
+        }
+
         return ret.build();
     }
 
@@ -1002,11 +1048,13 @@ fn main(){
     }
 
     InitWindow(1300, 750, "Dodgem");
+    InitAudioDevice();
     SetTargetFPS(FRAME_RATE as i32);
 
     let mut gl = GameData::new();
 
     gl.spawn_plan = Some(gen_level(10.0, 100.0));
+
 
     while ! WindowShouldClose() {
         gl.step();
