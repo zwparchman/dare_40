@@ -58,8 +58,6 @@ fn max_float(a: f32, b: f32) -> f32 {
     }
 }
 
-
-
 fn min_float(a: f32, b: f32) -> f32 {
     if a < b {
         a
@@ -103,6 +101,30 @@ fn b_or(a: Vec<bool>, b: Vec<bool>) -> Vec<bool> {
     }
     return ret;
 }
+
+#[derive(Clone)]
+pub struct StopAt {
+    xloc: f32,
+}
+
+struct StopAtBuilder {
+    thing: StopAt,
+}
+
+impl StopAtBuilder {
+    fn new() -> Self {
+        Self{ thing: StopAt{xloc: -102.0}}
+    }
+    fn xloc(mut self, val: f32) -> Self {
+        self.thing.xloc = val;
+        self
+    }
+    fn build(self) -> StopAt {
+        return self.thing
+    }
+}
+
+
 
 #[derive(Clone)]
 pub struct SineMovement {
@@ -265,6 +287,7 @@ pub struct Powerup {
     fire_damage_increase: f32,
     shield_increase: f32,
     pickup_sound: Arc<Sound>,
+    shot_increase: i32,
 }
 
 #[derive(Clone)]
@@ -280,7 +303,13 @@ impl PowerupBuilder {
             fire_damage_increase: 1.0,
             shield_increase: 1.0,
             pickup_sound: load_sound("silence.wav".to_string()).unwrap(),
+            shot_increase: 0,
         }}
+    }
+
+    fn shot_increase(mut self, val: i32) -> Self {
+        self.thing.shot_increase = val;
+        self
     }
 
     fn sound_by_name(mut self, val: String) -> Self {
@@ -322,6 +351,7 @@ pub struct PlayerStats {
     base_speed: f32,
     owned: Vec<Prefab>,
     install_progress: i32,
+    install_finish_sound: Arc<Sound>,
 }
 
 #[derive(Clone)]
@@ -330,9 +360,11 @@ pub struct Weapon {
     fire_velocity: f32,
     gun_cooldown_frames : i32,
     prefab : Arc<Prefab>,
+    pattern: i32,
 
     direction: f32,
     offset: f32,
+    fire_sound: Option<Arc<Sound>>,
 }
 
 #[derive(Clone)]
@@ -349,8 +381,21 @@ impl WeaponBuilder {
             prefab: Arc::new(PrefabBuilder::new().build()),
             direction: 1.0,
             offset: 40.0,
+            pattern: 1,
+            fire_sound: None,
         }}
     }
+
+    fn fire_sound(mut self, val: String) -> Self{
+        self.thing.fire_sound = load_sound(val);
+        self
+    }
+
+    fn pattern(mut self, val: i32) -> Self{
+        self.thing.pattern = val;
+        self
+    }
+
     fn fire_rate(mut self, val: f32) -> Self{
         self.thing.fire_rate = val;
         self
@@ -451,6 +496,7 @@ struct GameData{
     team_list: VectorStorage<Team>,
     install_list: VectorStorage<Install>,
     death_sound_list: VectorStorage<DeathSound>,
+    stop_at_list: VectorStorage<StopAt>,
 
     unused_ids: Vec<id_type>,
     max_id: i64,
@@ -481,6 +527,7 @@ impl GameData {
             team_list: VectorStorage::<Team>::new(),
             install_list: VectorStorage::<Install>::new(),
             death_sound_list: VectorStorage::<DeathSound>::new(),
+            stop_at_list: VectorStorage::<StopAt>::new(),
 
             unused_ids: Vec::<id_type>::new(),
             max_id: 0,
@@ -507,6 +554,7 @@ impl GameData {
         self.team_list.remove(id);
         self.install_list.remove(id);
         self.death_sound_list.remove(id);
+        self.stop_at_list.remove(id);
 
         self.free_id(id);
     }
@@ -553,6 +601,7 @@ impl GameData {
         self.do_player_input();
         self.do_sine_movement();
         self.do_install();
+        self.do_stop_at();
         self.do_movement();
         self.do_despawn();
         self.do_collision();
@@ -591,6 +640,13 @@ impl GameData {
                 weapon.gun_cooldown_frames <= 0
             };
 
+            let pattern = {
+                let ref weapon = self.weapon_list.get(id).unwrap();
+                weapon.pattern
+            };
+
+
+
             let prefab = {
                 let ref weapon = self.weapon_list.get(id).unwrap();
                 weapon.prefab.clone()
@@ -598,23 +654,28 @@ impl GameData {
 
 
             if fire {
-                #[allow(mutable_transmutes)]
-                let mut gd = unsafe{ &mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
-                let bul_id = prefab.spawn(&mut gd);
-
-                let mut weapon = self.weapon_list.get(id).unwrap();
+                let mut weapon = self.weapon_list.get(id).unwrap().clone();
+                let phy1 = self.physical_list.get(id).unwrap().clone();
+                if let Some(sound) = weapon.fire_sound.clone() {
+                    PlaySound(&*sound);
+                }
                 weapon.gun_cooldown_frames = weapon.fire_rate as i32;
 
-                let mut bul_phy = self.physical_list.get(bul_id).unwrap().clone();
+                for angle in get_shot_angles(40.0, pattern) {
+                    #[allow(mutable_transmutes)]
+                    let mut gd =unsafe{&mut std::mem::transmute::<&GameData,&mut GameData>(&self)};
+                    let bul_id = prefab.spawn(&mut gd);
 
-                let phy1 = self.physical_list.get(id).unwrap().clone();
+                    let mut bul_phy = self.physical_list.get(bul_id).unwrap().clone();
 
-                bul_phy.xvel = weapon.direction * weapon.fire_velocity;
+                    bul_phy.xvel = (DEG2RAD as f32 * angle).cos() *  weapon.fire_velocity;
+                    bul_phy.yvel = (DEG2RAD as f32 * angle).sin() *  weapon.fire_velocity;
+                    bul_phy.x = phy1.x + weapon.offset * weapon.direction;
+                    bul_phy.y = phy1.y;
 
-                bul_phy.x = phy1.x + weapon.offset * weapon.direction;
-                bul_phy.y = phy1.y;
+                    self.physical_list.add(bul_id, bul_phy);
 
-                self.physical_list.add(bul_id, bul_phy);
+                }
                 self.weapon_list.add(id, weapon);
             }
         }
@@ -709,10 +770,11 @@ impl GameData {
         for id in 0..mask.len() as id_type {
             if !mask[id as usize]{ continue; }
 
-            let shield = self.shield_list.get(id).unwrap().clone();
-            return shield.ammount / shield.max_shield;
+            if let Some(shield) = self.shield_list.get(id) {
+                return shield.ammount / shield.max_shield;
+            }
         }
-        return 0.0;
+        return 1.0;
     }
 
     fn is_colliding(&mut self, a: id_type, b: id_type) -> bool {
@@ -789,14 +851,22 @@ impl GameData {
 
             if stats.install_progress >= PART_INSTALLED_AT {
                 stats.install_progress = 0;
+                PlaySound(&*stats.install_finish_sound);
                 let upgrade_prefab = stats.owned[0].clone();
                 stats.install_progress == 0;
 
                 //apply the upgrade
-                let mut weapon = self.weapon_list.get(id).unwrap();
+                let mut weapon = self.weapon_list.get(id).clone().unwrap();
+                let mut shield = self.shield_list.get(id).clone().unwrap();
+                let upgrade = upgrade_prefab.powerup.unwrap().clone();
 
-                weapon.fire_rate *= upgrade_prefab.powerup.unwrap().fire_rate_increase;
+                weapon.fire_rate *= upgrade.fire_rate_increase;
+                shield.regen *= upgrade.regen_increase;
+                shield.max_shield *= upgrade.shield_increase;
+                weapon.pattern += upgrade.shot_increase;
+                // bullet.damage *= upgrade.fire_damage_increase;
 
+                self.shield_list.add(id, shield);
                 self.weapon_list.add(id, weapon);
                 stats.owned.remove(0);
             }
@@ -865,6 +935,8 @@ impl GameData {
             self.physical_list.get(id).unwrap();
         }
 
+        let mut groups : Vec<Vec<id_type>>= vec![ vec![]];
+
         for outer_id in 0..self.max_id {
             for inner_id in outer_id+1..self.max_id {
                 if self.is_colliding(outer_id as id_type, inner_id as id_type) {
@@ -900,7 +972,7 @@ impl GameData {
             if !in_mask[id as usize]{ continue; }
 
 
-            let player_speed = self.player_stats_list.get(id).unwrap().movement_speed;
+            let player_speed = self.player_stats_list.get(id).unwrap().movement_speed * FRAME_TIME;
 
             if IsKeyDown(KEY_W) {
                 let mut phy = self.physical_list.get(id).unwrap().clone();
@@ -966,6 +1038,23 @@ impl GameData {
         }
     }
 
+    fn do_stop_at(&mut self){
+        let mask = self.stop_at_list.mask.clone();
+
+        for id in 0..mask.len() as id_type {
+            if ! mask[id as usize] { continue; }
+
+            let stop_at = self.stop_at_list.get(id).unwrap();
+            let mut phy = self.physical_list.get(id).unwrap();
+
+            if stop_at.xloc >= phy.x {
+                phy.xvel = 0.0;
+                self.physical_list.add(id, phy);
+                self.stop_at_list.remove(id);
+            }
+        }
+    }
+
     fn do_movement(&mut self){
         let mask = self.physical_list.mask.clone();
         for id in 0..self.max_id as id_type {
@@ -1027,11 +1116,26 @@ impl GameData {
         if let Some(val) = self.death_sound_list.get(id) {
             ret = ret.death_sound(val);
         }
+        if let Some(val) = self.stop_at_list.get(id) {
+            ret = ret.stop_at(val);
+        }
+
 
         return ret.build();
     }
 
 }
+fn get_shot_angles(angle: f32, count: i32) -> Vec<f32> {
+    let mut ret = vec![];
+    let delta = angle / (count+1) as f32;
+
+    for i in 0..count {
+        ret.push( delta * (i as f32 + 1.0) - angle/2.0)
+    }
+
+    return ret;
+}
+
 
 
 fn main(){

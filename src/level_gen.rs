@@ -23,6 +23,7 @@ pub struct Prefab {
     pub team: Option<Team>,
     pub install: Option<Install>,
     pub death_sound: Option<DeathSound>,
+    pub stop_at: Option<StopAt>
 }
 
 impl Prefab {
@@ -77,6 +78,10 @@ impl Prefab {
         if let Some(val) = self.death_sound.clone() {
             gd.death_sound_list.add(id,val);
         }
+        if let Some(val) = self.stop_at.clone() {
+            gd.stop_at_list.add(id,val);
+        }
+
 
         return id;
     }
@@ -106,6 +111,7 @@ impl PrefabBuilder{
             team: None,
             install: None,
             death_sound: None,
+            stop_at: None,
         }}
     }
 
@@ -173,13 +179,14 @@ impl PrefabBuilder{
         self.thing.death_sound = Some(val);
         self
     }
+    pub fn stop_at(mut self, val:StopAt) -> Self {
+        self.thing.stop_at = Some(val);
+        self
+    }
+
 
     pub fn build(self) -> Prefab {
         return self.thing
-    }
-
-    pub fn clone_build(&self) -> Prefab {
-        return self.thing.clone()
     }
 }
 
@@ -214,18 +221,20 @@ fn gen_player() -> Prefab{
         .controllable(PlayerControl{})
         .collidable(Collidable{ radius: 25.0})
         .player_stats( PlayerStats{
-            movement_speed: 15.0,
-            base_speed: 15.0,
+            movement_speed: 350.0,
+            base_speed: 350.0,
             owned: vec![],
             install_progress: 0,
+            install_finish_sound: load_sound("upgrade-finished.wav".to_string()).unwrap()
         })
         .shield( ShieldBuilder::new()
-                 .regen(0.01)
+                 .regen(0.10)
                  .ammount(30.0)
                  .build())
         .weapon( WeaponBuilder::new()
                  .fire_rate(0.2*FRAME_RATE)
                  .fire_velocity(300.0)
+                 .fire_sound("laser001.wav".to_string())
                  .prefab(PrefabBuilder::new()
                            .physical(PhysicalBuilder::new().build())
                            .team(Team{team:0})
@@ -242,6 +251,20 @@ fn gen_player() -> Prefab{
                  .build())
         .team(Team{team:0})
         .build()
+}
+
+fn gen_shot_increase(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+    let mut base = gen_fire_damage_increase(x,y,&mut rng);
+
+    base.powerup = Some(PowerupBuilder::new()
+        .sound_by_name("item-pickup.wav".to_string())
+        .shot_increase(1)
+        .build());
+    base.drawable = Some(DrawableBuilder::new()
+                         .texture_by_name("shot-number-increase.png".to_string())
+                         .layer(1.0)
+                         .build());
+    return base;
 }
 
 fn gen_fire_damage_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
@@ -373,6 +396,61 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .build()
 }
 
+fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("enemy3.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                           .x(x)
+                           .y(y)
+                           .xvel(-100.5+ rng.next_f32()*0.01)
+                           .build())
+        .stop_at(StopAtBuilder::new()
+                 .xloc(900.0+rng.next_f32()*100.0)
+                 .build())
+        .auto_fire(AutoFire{})
+        .collidable(Collidable{ radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .death_sound(DeathSoundBuilder::new()
+                     .sound_by_name("explosion001.wav".to_string())
+                     .build())
+        .shield( ShieldBuilder::new()
+                 .ammount(110.0)
+                 .build())
+        .sine_movement( SineMovementBuilder::new()
+                        .amplitude(300.0 + rng.next_f32()*20.0 )
+                        .frequency(0.05 + rng.next_f32() * 0.5 )
+                        .build())
+        .weapon( WeaponBuilder::new()
+                 .pattern(2)
+                 .fire_rate(1.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .prefab(PrefabBuilder::new()
+                           .team(Team{team:1})
+                           .despawn_left(DespawnFarLeft{})
+                           .bullet(Bullet{damage: 2.0})
+                           .sine_movement(SineMovementBuilder::new()
+                                          .amplitude(20.0)
+                                          .frequency(3.0)
+                                          .build())
+                           .physical(PhysicalBuilder::new().build())
+                           .collidable(Collidable{radius: 8.0})
+                           .drawable(DrawableBuilder::new()
+                                     .texture_by_name("orange-ball.png".to_string())
+                                     .layer(1.0)
+                                     .build())
+                           .build())
+                 .fire_velocity(-300.0 - rng.next_f32() * 0.2)
+                 .offset(-10.0)
+                 .gun_cooldown_frames(1)
+                 .build())
+        .team(Team{team:1})
+        .build()
+}
+
+
+
 
 
 fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
@@ -400,7 +478,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .frequency(0.5 + rng.next_f32() * 2.0 )
                         .build())
         .weapon( WeaponBuilder::new()
-                 .fire_rate(2.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .fire_rate(3.0*FRAME_RATE+rng.next_f32()* 0.5)
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
                            .despawn_left(DespawnFarLeft{})
@@ -413,7 +491,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                                      .build())
                            .build())
                  .fire_velocity(-300.0 - rng.next_f32() * 0.2)
-                 .offset(-80.0)
+                 .offset(-10.0)
                  .gun_cooldown_frames(1)
                  .build())
         .team(Team{team:1})
@@ -425,11 +503,12 @@ fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> 
     let b = gen_fire_damage_increase(x,y,&mut rng).clone();
     let c = gen_shield_increase(x,y,&mut rng).clone();
     let d = gen_regen_increase(x,y,&mut rng).clone();
-    return rng.choose(&[a,b,c,d]).unwrap().clone();
+    let e = gen_shot_increase(x,y,&mut rng).clone();
+    return rng.choose(&[a,b,c,d,e]).unwrap().clone();
 }
 
 //*
-pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
+pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
     let mut ret = HashMap::<u64,Vec<Spawner>>::new();
 
     let mut rng = rand::isaac::Isaac64Rng::new_unseeded();
@@ -438,14 +517,15 @@ pub fn gen_level(difficulty: f32, length: f32) -> HashMap<u64, Vec<Spawner>>{
     spawner.prefabs.push(gen_player());
     ret.insert(0, vec![spawner.clone()]);
 
-    for i in 1..100 {
+    for i in 1..1000 {
         spawner = Spawner::new();
-        for j in 0..4 {
-            spawner.prefabs.push(gen_enemy_1(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
+        for j in 0..(rng.gen_range(0.0,30.0)/10.0/i as f32) as i32 {
+            spawner.prefabs.push(gen_enemy_1(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
-        spawner.prefabs.push(gen_enemy_2(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
+        spawner.prefabs.push(gen_enemy_2(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
+        spawner.prefabs.push(gen_enemy_3(rng.gen_range(1400.0, 1500.0), rng.gen_range(300.0, 400.0), &mut rng));
         spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
-        ret.insert(150*i, vec![spawner.clone()]);
+        ret.insert((0.9999_f32.powi(i)*300.0*i as f32) as u64, vec![spawner.clone()]);
     }
     /*
     let mut cur = 0.0;
