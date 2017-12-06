@@ -273,7 +273,7 @@ fn gen_player() -> Prefab{
                            .team(Team{team:0})
                            .bullet(Bullet{damage: 10.0})
                            .despawn_right(DespawnFarRight{})
-                           .collidable(Collidable{radius: 8.0})
+                           .collidable(Collidable{radius: 4.0})
                            .drawable(DrawableBuilder::new()
                                      .texture_by_name("red_ball.png".to_string())
                                      .layer(1.0)
@@ -412,11 +412,15 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .despawn_left(DespawnFarLeft{})
                            .bullet(Bullet{damage: 10.0})
                            .physical(PhysicalBuilder::new().build())
-                           .collidable(Collidable{radius: 8.0})
+                           .collidable(Collidable{radius: 4.0})
                            .sine_movement(SineMovementBuilder::new()
                                           .amplitude(30.0)
                                           .frequency(2.0)
                                           .build())
+                           .sine_movement_x(SineMovementXBuilder::new()
+                                            .amplitude(30.0)
+                                            .frequency(2.5)
+                                            .build())
                            .drawable(DrawableBuilder::new()
                                      .texture_by_name("green-ball.png".to_string())
                                      .layer(1.0)
@@ -474,7 +478,7 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                                           .frequency(3.0)
                                           .build())
                            .physical(PhysicalBuilder::new().build())
-                           .collidable(Collidable{radius: 8.0})
+                           .collidable(Collidable{radius: 4.0})
                            .drawable(DrawableBuilder::new()
                                      .texture_by_name("orange-ball.png".to_string())
                                      .layer(1.0)
@@ -487,10 +491,6 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .team(Team{team:1})
         .build()
 }
-
-
-
-
 
 fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
@@ -523,7 +523,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .despawn_left(DespawnFarLeft{})
                            .bullet(Bullet{damage: 10.0})
                            .physical(PhysicalBuilder::new().build())
-                           .collidable(Collidable{radius: 8.0})
+                           .collidable(Collidable{radius: 4.0})
                            .drawable(DrawableBuilder::new()
                                      .texture_by_name("red_ball.png".to_string())
                                      .layer(1.0)
@@ -566,7 +566,6 @@ fn gen_bomb(rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
     for angle in get_shot_angles( rng.gen_range(200.0, 360.0), rng.gen_range(5, 10)) {
         spawner.push( get_sub(&sub_munition_prefab, angle, rng.gen_range(100.0, 150.0)));
     }
-
 
     //the actuall bomb
     PrefabBuilder::new()

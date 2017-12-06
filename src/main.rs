@@ -1337,8 +1337,6 @@ fn get_shot_angles(angle: f32, count: i32) -> Vec<f32> {
     return ret;
 }
 
-
-
 fn main(){
     {
         //raylib configuration flags
