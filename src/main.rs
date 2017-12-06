@@ -44,7 +44,7 @@ mod storage;
 use std::collections::{HashMap,HashSet};
 
 
-const FRAME_RATE: f32 = 60.0;
+const FRAME_RATE: f32 = 120.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
 
 
@@ -235,6 +235,13 @@ impl DrawableBuilder {
 pub struct DeathEvent{
     sound: Arc<Sound>,
     spawner: Arc<Spawner>
+}
+
+impl DeathEvent{
+    fn die(&self, mut gd: &mut GameData, pos: &Physical){
+        PlaySound(&self.sound);
+        self.spawner.spawn_at_pos(&mut gd, &pos);
+    }
 }
 
 struct DeathEventBuilder{
@@ -437,6 +444,32 @@ impl WeaponBuilder {
 }
 
 #[derive(Clone)]
+pub struct TimeoutDeath{
+    ticks: i32,
+}
+
+pub struct TimeoutDeathBuilder {
+    thing: TimeoutDeath,
+}
+
+impl TimeoutDeathBuilder {
+    fn new() -> Self {
+        Self{ thing: TimeoutDeath{
+            ticks: 0,
+        }}
+    }
+
+    fn ticks(mut self, val: i32) -> Self{
+        self.thing.ticks = val;
+        self
+    }
+
+    fn build(self) -> TimeoutDeath {
+        return self.thing;
+    }
+}
+
+#[derive(Clone)]
 pub struct Shield {
     max_shield: f32,
     ammount: f32,
@@ -506,6 +539,7 @@ pub struct GameData{
     install_list: VectorStorage<Install>,
     death_event_list: VectorStorage<DeathEvent>,
     stop_at_list: VectorStorage<StopAt>,
+    timeout_death_list: VectorStorage<TimeoutDeath>,
 
     unused_ids: Vec<id_type>,
     max_id: i64,
@@ -537,6 +571,8 @@ impl GameData {
             install_list: VectorStorage::<Install>::new(),
             death_event_list: VectorStorage::<DeathEvent>::new(),
             stop_at_list: VectorStorage::<StopAt>::new(),
+            timeout_death_list: VectorStorage::<TimeoutDeath>::new(),
+
 
             unused_ids: Vec::<id_type>::new(),
             max_id: 0,
@@ -564,6 +600,7 @@ impl GameData {
         self.install_list.remove(id);
         self.death_event_list.remove(id);
         self.stop_at_list.remove(id);
+        self.timeout_death_list.remove(id);
 
         self.free_id(id);
     }
@@ -617,6 +654,7 @@ impl GameData {
         self.do_movement();
         self.do_despawn();
         self.do_collision();
+        self.do_timeout_death();
         self.do_death_check();
         self.do_shield_regen();
         self.do_weapon_cooldown();
@@ -906,17 +944,44 @@ impl GameData {
             let pos = self.physical_list.get(id).unwrap().clone();
             if shield.ammount < 0.0 {
                 if let Some(death_event) = self.death_event_list.get(id) {
-                    PlaySound(&death_event.sound);
-
                     #[allow(mutable_transmutes)]
                     let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
-                    death_event.spawner.spawn_at_pos(&mut gd, &pos);
+
+                    death_event.die(&mut gd, &pos);
                 }
                 self.to_destroy.push(id);
             }
         }
 
         self.do_destroy();
+    }
+
+    fn do_timeout_death(&mut self){
+        let mask = self.timeout_death_list.mask.clone();
+
+        for id in 0..mask.len() as id_type {
+            if !mask[id as usize]{ continue; }
+
+            let mut timeout = self.timeout_death_list.get(id).unwrap().clone();
+            if timeout.ticks == 0 {
+                let pos = self.physical_list.get(id).unwrap().clone();
+
+                if let Some(death_event) = self.death_event_list.get(id) {
+                    #[allow(mutable_transmutes)]
+                    let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+
+                    death_event.die(&mut gd, &pos);
+                }
+
+                self.to_destroy.push(id);
+            } else {
+                timeout.ticks -= 1;
+                self.timeout_death_list.add(id, timeout);
+            }
+        }
+
+        self.do_destroy();
+
     }
 
     fn do_destroy(&mut self){
@@ -1185,7 +1250,9 @@ impl GameData {
         if let Some(val) = self.stop_at_list.get(id) {
             ret = ret.stop_at(val);
         }
-
+        if let Some(val) = self.timeout_death_list.get(id) {
+            ret = ret.timeout_death(val);
+        }
 
         return ret.build();
     }

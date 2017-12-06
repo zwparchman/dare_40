@@ -23,7 +23,8 @@ pub struct Prefab {
     pub team: Option<Team>,
     pub install: Option<Install>,
     pub death_event: Option<DeathEvent>,
-    pub stop_at: Option<StopAt>
+    pub stop_at: Option<StopAt>,
+    pub timeout_death: Option<TimeoutDeath>,
 }
 
 impl Prefab {
@@ -81,7 +82,9 @@ impl Prefab {
         if let Some(val) = self.stop_at.clone() {
             gd.stop_at_list.add(id,val);
         }
-
+        if let Some(val) = self.timeout_death.clone() {
+            gd.timeout_death_list.add(id,val);
+        }
 
         return id;
     }
@@ -112,6 +115,7 @@ impl PrefabBuilder{
             install: None,
             death_event: None,
             stop_at: None,
+            timeout_death: None,
         }}
     }
 
@@ -183,7 +187,10 @@ impl PrefabBuilder{
         self.thing.stop_at = Some(val);
         self
     }
-
+    pub fn timeout_death(mut self, val:TimeoutDeath) -> Self {
+        self.thing.timeout_death = Some(val);
+        self
+    }
 
     pub fn build(self) -> Prefab {
         return self.thing
@@ -443,6 +450,7 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .build())
         .weapon( WeaponBuilder::new()
                  .pattern(2)
+                 .fire_angle(rng.gen_range(90.0, 120.0))
                  .fire_rate(1.0*FRAME_RATE+rng.next_f32()* 0.5)
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
@@ -512,6 +520,87 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                  .offset(-10.0)
                  .gun_cooldown_frames(1)
                  .build())
+        .team(Team{team:1})
+        .build()
+}
+
+fn gen_bomb(rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+    let sub_munition_prefab = PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("yellow-ball.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .timeout_death(TimeoutDeathBuilder::new()
+                       .ticks(10000)
+                       .build())
+        .collidable(Collidable{radius: 4.0})
+        .despawn_left(DespawnFarLeft{})
+        .despawn_right(DespawnFarRight{})
+        .team(Team{team:1})
+        .bullet(Bullet{damage: 3.0});
+
+    let get_sub = |prefab: &PrefabBuilder, mut angle: f32, vel: f32| {
+        angle *= DEG2RAD as f32;
+        prefab.clone()
+            .physical(PhysicalBuilder::new()
+                      .xvel(angle.cos() * -1.0 * vel)
+                      .yvel(angle.sin() * vel)
+                      .build())
+            .build()
+    };
+
+    let mut spawner= Spawner::new();
+    for angle in get_shot_angles( rng.gen_range(200.0, 360.0), rng.gen_range(5, 10)) {
+        spawner.push( get_sub(&sub_munition_prefab, angle, rng.gen_range(100.0, 150.0)));
+    }
+
+
+    //the actuall bomb
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("bomb.png".to_string())
+                  .layer(2.0)
+                  .build())
+        .physical(PhysicalBuilder::new().build())
+        .timeout_death(TimeoutDeathBuilder::new()
+                       .ticks( (4.0*FRAME_RATE) as i32)
+                       .build())
+        .death_event(DeathEventBuilder::new()
+                     .spawner(Arc::new(spawner))
+                     .build())
+        .build()
+}
+
+fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+    let bomb = gen_bomb(&mut rng);
+
+    PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("enemy5.png".to_string())
+                  .layer(1.0)
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(x)
+                  .y(y)
+                  .xvel(-50.0)
+                  .build())
+        .auto_fire(AutoFire{})
+        .shield(ShieldBuilder::new()
+                .ammount(50.0)
+                .build())
+        .weapon(WeaponBuilder::new()
+                .prefab(bomb)
+                .fire_rate(rng.gen_range(4.0, 5.0)*FRAME_RATE)
+                .fire_sound("bomb-launch.wav".to_string())
+                .fire_velocity(rng.gen_range(50.0, 100.0)*-1.0)
+                .gun_cooldown_frames( (5.0*FRAME_RATE) as i32 )
+                .offset(-40.0)
+                .build())
+        .collidable(Collidable{radius: 30.0})
+        .death_event(DeathEventBuilder::new()
+                     .sound_by_name("explosion002.wav".to_string())
+                     .build())
+        .despawn_left(DespawnFarLeft{})
         .team(Team{team:1})
         .build()
 }
@@ -601,9 +690,14 @@ pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
         }
         spawner.prefabs.push(gen_enemy_2(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         spawner.prefabs.push(gen_enemy_3(rng.gen_range(1400.0, 1500.0), rng.gen_range(300.0, 400.0), &mut rng));
-        spawner.prefabs.push(gen_enemy_4(rng.gen_range(1400.0, 1500.0), rng.gen_range(300.0, 400.0), &mut rng));
+        for _ in 1..3 {
+            spawner.prefabs.push(gen_enemy_4(rng.gen_range(1400.0, 1500.0), rng.gen_range(100.0, 600.0), &mut rng));
+        }
+        spawner.prefabs.push(gen_enemy_5(rng.gen_range(1400.0, 1500.0), rng.gen_range(100.0, 600.0), &mut rng));
         spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
-        ret.insert((0.9999_f32.powi(i)*300.0*(i) as f32) as u64, vec![spawner.clone()]);
+
+        let when: u64 = 1 + (FRAME_RATE * 4.0 * (i-1) as f32) as u64;
+        ret.insert( when, vec![spawner.clone()]);
     }
     /*
     let mut cur = 0.0;
