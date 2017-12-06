@@ -270,6 +270,7 @@ fn gen_player() -> Prefab{
         .build()
 }
 
+#[allow(unused)]
 fn gen_shot_increase(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     let mut base = gen_fire_damage_increase(x,y,&mut rng);
 
@@ -284,7 +285,7 @@ fn gen_shot_increase(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> P
     return base;
 }
 
-fn gen_fire_damage_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+fn gen_fire_damage_increase(x: f32, y: f32, _rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
                   .texture_by_name("damage-up.png".to_string())
@@ -304,7 +305,7 @@ fn gen_fire_damage_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -
         .build()
 }
 
-fn gen_regen_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+fn gen_regen_increase(x: f32, y: f32, _rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
                   .texture_by_name("shield-regen.png".to_string())
@@ -324,7 +325,7 @@ fn gen_regen_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Pref
         .build()
 }
 
-fn gen_shield_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
+fn gen_shield_increase(x: f32, y: f32, _rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
                   .texture_by_name("shield-up.png".to_string())
@@ -344,7 +345,7 @@ fn gen_shield_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Pre
         .build()
 }
 
-fn gen_fire_rate_increase(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
+fn gen_fire_rate_increase(x: f32, y: f32, _rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
     PrefabBuilder::new()
         .drawable(DrawableBuilder::new()
                   .texture_by_name("fire-rate-up.png".to_string())
@@ -595,7 +596,7 @@ pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
 
     for i in 1..1000 {
         spawner = Spawner::new();
-        for j in 0..(rng.gen_range(0.0,30.0)/10.0/i as f32) as i32 {
+        for _j in 0..(rng.gen_range(0.0,30.0)/10.0/i as f32) as i32 {
             spawner.prefabs.push(gen_enemy_1(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
         spawner.prefabs.push(gen_enemy_2(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));

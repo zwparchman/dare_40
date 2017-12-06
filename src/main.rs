@@ -308,6 +308,7 @@ impl PowerupBuilder {
         }}
     }
 
+    #[allow(unused)]
     fn shot_increase(mut self, val: i32) -> Self {
         self.thing.shot_increase = val;
         self
@@ -487,7 +488,7 @@ pub struct Team{team: i32}
 
 
 
-struct GameData{
+pub struct GameData{
     drawable_list: VectorStorage<Drawable>,
     physical_list: VectorStorage<Physical>,
     collidable_list: VectorStorage<Collidable>,
@@ -827,9 +828,6 @@ impl GameData {
         }
 
         if self.shield_list.contains(a) && self.bullet_list.contains(b) {
-            let a_phy = self.physical_list.get(a).unwrap();
-            let b_phy = self.physical_list.get(a).unwrap();
-
             if  self.team_list.get(a).unwrap_or(Team{team:-1}).clone().team != 
                 self.team_list.get(b).unwrap_or(Team{team:-2}).clone().team {
 
@@ -882,7 +880,7 @@ impl GameData {
                     bullet.damage *= upgrade.fire_damage_increase;
 
                     let mut wc = weapon.clone();
-                    let mut bullet_prefab = std::sync::Arc::make_mut(&mut wc.prefab);
+                    let bullet_prefab = std::sync::Arc::make_mut(&mut wc.prefab);
                     bullet_prefab.bullet = Some(bullet.clone());
                     weapon.prefab = Arc::new(bullet_prefab.clone());
                 }

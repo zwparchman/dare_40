@@ -106,6 +106,7 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
 }
 */
 
+#[allow(unused)]
 pub struct NullStorage {
     mask: Vec<bool>,
 }
