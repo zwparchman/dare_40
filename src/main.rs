@@ -876,7 +876,16 @@ impl GameData {
                 shield.regen *= upgrade.regen_increase;
                 shield.max_shield *= upgrade.shield_increase;
                 weapon.pattern += upgrade.shot_increase;
-                // bullet.damage *= upgrade.fire_damage_increase;
+
+                {
+                    let bullet: &mut Bullet = &mut weapon.clone().prefab.bullet.clone().unwrap();
+                    bullet.damage *= upgrade.fire_damage_increase;
+
+                    let mut wc = weapon.clone();
+                    let mut bullet_prefab = std::sync::Arc::make_mut(&mut wc.prefab);
+                    bullet_prefab.bullet = Some(bullet.clone());
+                    weapon.prefab = Arc::new(bullet_prefab.clone());
+                }
 
                 self.shield_list.add(id, shield);
                 self.weapon_list.add(id, weapon);
