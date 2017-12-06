@@ -168,6 +168,7 @@ pub struct Physical{
     yvel: f32,
 }
 
+#[derive(Clone)]
 struct PhysicalBuilder{
     thing: Physical,
 }
@@ -231,24 +232,24 @@ impl DrawableBuilder {
 }
 
 #[derive(Clone)]
-pub struct DeathSound{
+pub struct DeathEvent{
     sound: Arc<Sound>,
-    volume: f32,
+    spawner: Arc<Spawner>
 }
 
-struct DeathSoundBuilder{
-    thing: DeathSound,
+struct DeathEventBuilder{
+    thing: DeathEvent,
 }
 
-impl DeathSoundBuilder {
+impl DeathEventBuilder {
     fn new() -> Self {
-        DeathSoundBuilder{ thing: DeathSound {
+        DeathEventBuilder{ thing: DeathEvent {
             sound: load_sound("scilence.wav".to_string()).unwrap(),
-            volume: 1.0,
+            spawner: Arc::new(Spawner::new()),
         }}
     }
-    fn volume(mut self, val: f32) -> Self{
-        self.thing.volume = val;
+    fn spawner(mut self, val: Arc<Spawner>) -> Self {
+        self.thing.spawner = val;
         self
     }
     fn sound_by_name(mut self, val: String) -> Self{
@@ -256,7 +257,7 @@ impl DeathSoundBuilder {
         self
     }
 
-    fn build(self) -> DeathSound  {
+    fn build(self) -> DeathEvent  {
         return self.thing;
     }
 }
@@ -502,7 +503,7 @@ struct GameData{
     sine_movement_list: VectorStorage<SineMovement>,
     team_list: VectorStorage<Team>,
     install_list: VectorStorage<Install>,
-    death_sound_list: VectorStorage<DeathSound>,
+    death_event_list: VectorStorage<DeathEvent>,
     stop_at_list: VectorStorage<StopAt>,
 
     unused_ids: Vec<id_type>,
@@ -533,7 +534,7 @@ impl GameData {
             sine_movement_list: VectorStorage::<SineMovement>::new(),
             team_list: VectorStorage::<Team>::new(),
             install_list: VectorStorage::<Install>::new(),
-            death_sound_list: VectorStorage::<DeathSound>::new(),
+            death_event_list: VectorStorage::<DeathEvent>::new(),
             stop_at_list: VectorStorage::<StopAt>::new(),
 
             unused_ids: Vec::<id_type>::new(),
@@ -560,7 +561,7 @@ impl GameData {
         self.sine_movement_list.remove(id);
         self.team_list.remove(id);
         self.install_list.remove(id);
-        self.death_sound_list.remove(id);
+        self.death_event_list.remove(id);
         self.stop_at_list.remove(id);
 
         self.free_id(id);
@@ -895,9 +896,14 @@ impl GameData {
             if !mask[id as usize]{ continue; }
 
             let shield = self.shield_list.get(id).unwrap().clone();
+            let pos = self.physical_list.get(id).unwrap().clone();
             if shield.ammount < 0.0 {
-                if let Some(death_sound) = self.death_sound_list.get(id) {
-                    PlaySound(&death_sound.sound);
+                if let Some(death_event) = self.death_event_list.get(id) {
+                    PlaySound(&death_event.sound);
+
+                    #[allow(mutable_transmutes)]
+                    let mut gd=unsafe{&mut std::mem::transmute::<&GameData, &mut GameData>(&self) };
+                    death_event.spawner.spawn_at_pos(&mut gd, &pos);
                 }
                 self.to_destroy.push(id);
             }
@@ -980,6 +986,7 @@ impl GameData {
                 for inner in outer..group.len() {
                     if self.is_colliding(group[outer], group[inner]) {
                         if already_checked.contains( &(group[inner], group[outer]) ) { continue; }
+                        if already_checked.contains( &(group[outer], group[inner]) ) { continue; }
 
                         self.handle_collision(group[outer], group[inner]);
                         self.handle_collision(group[inner], group[outer]);
@@ -1165,8 +1172,8 @@ impl GameData {
         if let Some(val) = self.install_list.get(id) {
             ret = ret.install(val);
         }
-        if let Some(val) = self.death_sound_list.get(id) {
-            ret = ret.death_sound(val);
+        if let Some(val) = self.death_event_list.get(id) {
+            ret = ret.death_event(val);
         }
         if let Some(val) = self.stop_at_list.get(id) {
             ret = ret.stop_at(val);
