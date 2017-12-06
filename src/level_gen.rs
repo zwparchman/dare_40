@@ -20,6 +20,7 @@ pub struct Prefab {
     pub weapon: Option<Weapon>,
     pub auto_fire: Option<AutoFire>,
     pub sine: Option<SineMovement>,
+    pub sine_x: Option<SineMovementX>,
     pub team: Option<Team>,
     pub install: Option<Install>,
     pub death_event: Option<DeathEvent>,
@@ -70,6 +71,9 @@ impl Prefab {
         if let Some(val) = self.sine.clone() {
             gd.sine_movement_list.add(id,val);
         }
+        if let Some(val) = self.sine_x.clone() {
+            gd.sine_movement_x_list.add(id,val);
+        }
         if let Some(val) = self.team.clone() {
             gd.team_list.add(id,val);
         }
@@ -111,6 +115,7 @@ impl PrefabBuilder{
             weapon: None,
             auto_fire: None,
             sine: None,
+            sine_x: None,
             team: None,
             install: None,
             death_event: None,
@@ -169,6 +174,10 @@ impl PrefabBuilder{
     }
     pub fn sine_movement(mut self, val:SineMovement) -> Self {
         self.thing.sine = Some(val);
+        self
+    }
+    pub fn sine_movement_x(mut self, val:SineMovementX) -> Self {
+        self.thing.sine_x = Some(val);
         self
     }
     pub fn team(mut self, val:Team) -> Self {
@@ -448,6 +457,10 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .amplitude(rng.gen_range(300.0,320.0))
                         .frequency(rng.gen_range(0.05,1.0))
                         .build())
+        .sine_movement_x( SineMovementXBuilder::new()
+                          .amplitude(rng.gen_range(50.0, 150.0))
+                          .frequency(rng.gen_range(0.05, 0.30))
+                          .build())
         .weapon( WeaponBuilder::new()
                  .pattern(2)
                  .fire_angle(rng.gen_range(90.0, 120.0))
@@ -567,6 +580,7 @@ fn gen_bomb(rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
                        .build())
         .death_event(DeathEventBuilder::new()
                      .spawner(Arc::new(spawner))
+                     .sound_by_name("bomb-explode.wav".to_string())
                      .build())
         .build()
 }
@@ -588,6 +602,10 @@ fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab 
         .shield(ShieldBuilder::new()
                 .ammount(50.0)
                 .build())
+        .sine_movement(SineMovementBuilder::new()
+                       .amplitude(5.0)
+                       .frequency(1.5)
+                       .build())
         .weapon(WeaponBuilder::new()
                 .prefab(bomb)
                 .fire_rate(rng.gen_range(4.0, 5.0)*FRAME_RATE)

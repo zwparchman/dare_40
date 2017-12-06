@@ -44,7 +44,7 @@ mod storage;
 use std::collections::{HashMap,HashSet};
 
 
-const FRAME_RATE: f32 = 120.0;
+const FRAME_RATE: f32 = 60.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
 
 
@@ -120,6 +120,41 @@ impl StopAtBuilder {
         self
     }
     fn build(self) -> StopAt {
+        return self.thing
+    }
+}
+
+
+#[derive(Clone)]
+pub struct SineMovementX {
+    frequency: f32,
+    step: i32,
+    amplitude: f32,
+}
+
+struct SineMovementXBuilder {
+    thing: SineMovementX,
+}
+
+impl SineMovementXBuilder {
+    fn new() -> Self {
+        SineMovementXBuilder{ thing: SineMovementX{frequency: 1.0, step: 0, amplitude: 0.0} }
+    }
+    fn frequency(mut self, val: f32) -> Self {
+        self.thing.frequency = val;
+        self
+    }
+    fn amplitude(mut self, val: f32) -> Self {
+        self.thing.amplitude = val;
+        self
+    }
+    #[allow(unused)]
+    fn step(mut self, val: i32) -> Self {
+        self.thing.step = val;
+        self
+    }
+
+    fn build(self) -> SineMovementX {
         return self.thing
     }
 }
@@ -535,6 +570,7 @@ pub struct GameData{
     weapon_list: VectorStorage<Weapon>,
     auto_fire_list: VectorStorage<AutoFire>,
     sine_movement_list: VectorStorage<SineMovement>,
+    sine_movement_x_list: VectorStorage<SineMovementX>,
     team_list: VectorStorage<Team>,
     install_list: VectorStorage<Install>,
     death_event_list: VectorStorage<DeathEvent>,
@@ -567,6 +603,7 @@ impl GameData {
             weapon_list: VectorStorage::<Weapon>::new(),
             auto_fire_list: VectorStorage::<AutoFire>::new(),
             sine_movement_list: VectorStorage::<SineMovement>::new(),
+            sine_movement_x_list: VectorStorage::<SineMovementX>::new(),
             team_list: VectorStorage::<Team>::new(),
             install_list: VectorStorage::<Install>::new(),
             death_event_list: VectorStorage::<DeathEvent>::new(),
@@ -596,6 +633,7 @@ impl GameData {
         self.weapon_list.remove(id);
         self.auto_fire_list.remove(id);
         self.sine_movement_list.remove(id);
+        self.sine_movement_x_list.remove(id);
         self.team_list.remove(id);
         self.install_list.remove(id);
         self.death_event_list.remove(id);
@@ -649,6 +687,7 @@ impl GameData {
 
         self.do_player_input();
         self.do_sine_movement();
+        self.do_sine_movement_x();
         self.do_install();
         self.do_stop_at();
         self.do_movement();
@@ -1169,6 +1208,32 @@ impl GameData {
         }
     }
 
+    fn do_sine_movement_x(&mut self){
+        let mask = self.sine_movement_x_list.mask.clone();
+        for id in 0..mask.len() as id_type {
+            if  !mask[id as usize] { continue; }
+
+            let mut phy = self.physical_list.get(id).unwrap().clone();
+            let mut sine = self.sine_movement_x_list.get(id).unwrap().clone();
+
+            let freq = sine.frequency;
+            let amplitude = sine.amplitude;
+            let step =  sine.step;
+
+            let last = amplitude * f32::sin(3.14 * freq * (step-1) as f32 /FRAME_RATE);
+            let curr = amplitude * f32::sin(3.14 * freq * (step) as f32 /FRAME_RATE);
+            let diff = curr - last;
+
+            sine.step += 1;
+
+            phy.x += diff;
+
+            self.physical_list.add(id, phy);
+            self.sine_movement_x_list.add(id, sine);
+        }
+    }
+
+
     fn do_stop_at(&mut self){
         let mask = self.stop_at_list.mask.clone();
 
@@ -1237,6 +1302,9 @@ impl GameData {
         }
         if let Some(val) = self.sine_movement_list.get(id) {
             ret = ret.sine_movement(val);
+        }
+        if let Some(val) = self.sine_movement_x_list.get(id) {
+            ret = ret.sine_movement_x(val);
         }
         if let Some(val) = self.team_list.get(id) {
             ret = ret.team(val);
