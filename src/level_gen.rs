@@ -219,7 +219,7 @@ fn gen_player() -> Prefab{
                            .y(200.0)
                            .build())
         .controllable(PlayerControl{})
-        .collidable(Collidable{ radius: 25.0})
+        .collidable(Collidable{ radius: 20.0})
         .player_stats( PlayerStats{
             movement_speed: 350.0,
             base_speed: 350.0,
@@ -232,6 +232,7 @@ fn gen_player() -> Prefab{
                  .ammount(30.0)
                  .build())
         .weapon( WeaponBuilder::new()
+                 .fire_angle(60.0)
                  .fire_rate(0.2*FRAME_RATE)
                  .fire_velocity(300.0)
                  .fire_sound("laser001.wav".to_string())
@@ -246,7 +247,7 @@ fn gen_player() -> Prefab{
                                      .layer(1.0)
                                      .build())
                            .build())
-                 .offset(80.0)
+                 .offset(40.0)
                  .gun_cooldown_frames(1)
                  .build())
         .team(Team{team:0})
@@ -503,8 +504,7 @@ fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> 
     let b = gen_fire_damage_increase(x,y,&mut rng).clone();
     let c = gen_shield_increase(x,y,&mut rng).clone();
     let d = gen_regen_increase(x,y,&mut rng).clone();
-    let e = gen_shot_increase(x,y,&mut rng).clone();
-    return rng.choose(&[a,b,c,d,e]).unwrap().clone();
+    return rng.choose(&[a,b,c,d]).unwrap().clone();
 }
 
 //*
@@ -525,7 +525,7 @@ pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
         spawner.prefabs.push(gen_enemy_2(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         spawner.prefabs.push(gen_enemy_3(rng.gen_range(1400.0, 1500.0), rng.gen_range(300.0, 400.0), &mut rng));
         spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
-        ret.insert((0.9999_f32.powi(i)*300.0*i as f32) as u64, vec![spawner.clone()]);
+        ret.insert((0.9999_f32.powi(i)*300.0*(i) as f32) as u64, vec![spawner.clone()]);
     }
     /*
     let mut cur = 0.0;

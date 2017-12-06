@@ -303,6 +303,17 @@ pub fn CheckCollisionCircles(center1: &Vector2f, radius1: f32,
 
 #[allow(unused)]
 #[allow(bad_style)]
+pub fn CheckCollisionCircleRec(v: Vector2f, radius: f32, rect: Rectangle) -> bool {
+    let v1 = raylib_raw::Vector2{x:v.x, y: v.y };
+    unsafe{
+        raylib_raw::CheckCollisionCircleRec(v1, radius, rect) == bool_::true_
+    }
+}
+
+
+
+#[allow(unused)]
+#[allow(bad_style)]
 pub fn LoadSound(s: &str) -> Sound {
     unsafe{
         let title_c = CString::new(s).unwrap();

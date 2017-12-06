@@ -41,7 +41,7 @@ use storage::*;
 mod storage;
 
 
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 
 
 const FRAME_RATE: f32 = 60.0;
@@ -365,6 +365,7 @@ pub struct Weapon {
     direction: f32,
     offset: f32,
     fire_sound: Option<Arc<Sound>>,
+    fire_angle: f32,
 }
 
 #[derive(Clone)]
@@ -383,7 +384,13 @@ impl WeaponBuilder {
             offset: 40.0,
             pattern: 1,
             fire_sound: None,
+            fire_angle: 90.0,
         }}
+    }
+
+    fn fire_angle(mut self, val: f32) -> Self {
+        self.thing.fire_angle = val;
+        self
     }
 
     fn fire_sound(mut self, val: String) -> Self{
@@ -581,10 +588,13 @@ impl GameData {
     fn step(&mut self){
         {
             let frame = &self.frame_count.clone();
-            let mut plan = self.spawn_plan.clone().unwrap();
-            let olst = {
-                plan.remove(&frame).clone()
-            };
+            let olst;
+            if let Some(ref mut plan) = self.spawn_plan {
+                olst = plan.remove(&frame).clone();
+            } else {
+                olst = None;
+            }
+
             if let Some(lst) = olst.clone() {
                 print!("Spawning on frame {}\n", frame);
                 for spawner in lst {
@@ -661,7 +671,7 @@ impl GameData {
                 }
                 weapon.gun_cooldown_frames = weapon.fire_rate as i32;
 
-                for angle in get_shot_angles(40.0, pattern) {
+                for angle in get_shot_angles(weapon.fire_angle, pattern) {
                     #[allow(mutable_transmutes)]
                     let mut gd =unsafe{&mut std::mem::transmute::<&GameData,&mut GameData>(&self)};
                     let bul_id = prefab.spawn(&mut gd);
@@ -688,7 +698,8 @@ impl GameData {
             let txt = drw.texture;
             let src_rect = Rectangle {x:0, y:0, width:txt.width, height:txt.height};
             let dst_rect = Rectangle {
-                x: (pos.x + (txt.width / 2) as f32) as i32,
+                x: (pos.x - (txt.width / 2) as f32) as i32,
+                // x: pos.x as i32,
                 y: (pos.y - (txt.height / 2) as f32) as i32,
                 width: (txt.width) as i32,
                 height: (txt.height) as i32
@@ -930,22 +941,63 @@ impl GameData {
             to_check.push(id);
         }
 
+        /* //debug draw
         for id in to_check.clone() {
-            //print!("checking id {} on frame {}\n", id, self.frame_count);
-            self.physical_list.get(id).unwrap();
+            let phy = self.physical_list.get(id).clone().unwrap();
+            let col = self.collidable_list.get(id).clone().unwrap();
+
+            DrawCircle(phy.x as i32, phy.y as i32, col.radius, Color{r:255, g:255, b:255, a:255});
         }
+        // */
 
         let mut groups : Vec<Vec<id_type>>= vec![ vec![]];
+        {
+            let steps_x = 10;
+            let steps_y = 5;
+            let delta_x = GetScreenWidth() / steps_x;
+            let delta_y = GetScreenHeight() / steps_y;
+            for i in -2..steps_x+2 {
+                let x = delta_x * i;
+                for j in -2..steps_y+2 {
+                    let mut group: Vec<id_type> = Vec::<id_type>::new();
+                    let y = delta_y * j;
+                    let rect = Rectangle{x: x, y: y, width: delta_x, height: delta_y };
 
-        for outer_id in 0..self.max_id {
-            for inner_id in outer_id+1..self.max_id {
-                if self.is_colliding(outer_id as id_type, inner_id as id_type) {
-                    self.handle_collision(outer_id as id_type, inner_id as id_type);
-                    self.handle_collision(inner_id as id_type, outer_id as id_type);
+                    for id in to_check.clone() {
+                        if self.is_in_rect(&rect, id) {
+                            group.push(id);
+                        }
+                    }
+                    groups.push(group);
                 }
             }
         }
+
+        let mut already_checked = HashSet::<(id_type, id_type)>::new();
+        for group in groups {
+            if group.len() <= 1 { continue; }
+            for outer in 0..group.len() -1 {
+                for inner in outer..group.len() {
+                    if self.is_colliding(group[outer], group[inner]) {
+                        if already_checked.contains( &(group[inner], group[outer]) ) { continue; }
+
+                        self.handle_collision(group[outer], group[inner]);
+                        self.handle_collision(group[inner], group[outer]);
+                        already_checked.insert((group[outer], group[inner]));
+                    }
+                }
+            }
+        }
+
         self.do_destroy();
+    }
+
+    fn is_in_rect(&self, rect: &Rectangle, id: id_type) -> bool {
+        let pos = self.physical_list.get(id).unwrap();
+        let col = self.collidable_list.get(id).unwrap();
+
+        let vec = Vector2f::new(pos.x, pos.y);
+        CheckCollisionCircleRec(vec, col.radius, *rect)
     }
 
     fn do_despawn(&mut self){
