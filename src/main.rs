@@ -1347,7 +1347,7 @@ fn main(){
         flags |= FLAG_WINDOW_RESIZABLE;
         //flags |= FLAG_WINDOW_DECORATED;
         //flags |= FLAG_WINDOW_TRANSPARENT;
-        //flags |= FLAG_MSAA_4X_HINT;
+        flags |= FLAG_MSAA_4X_HINT;
         //flags |= FLAG_VSYNC_HINT;
         SetConfigFlags(flags);
     }

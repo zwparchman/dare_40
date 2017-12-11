@@ -627,6 +627,7 @@ fn gen_enemy_4(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .collidable(Collidable{radius: 20.0})
         .despawn_left(DespawnFarLeft{})
         .powerup(PowerupBuilder::new()
+                 .sound_by_name("bad-pickup.wav".to_string())
                  .build())
         .drawable(DrawableBuilder::new()
                   .texture_by_name("null-powerup.png".to_string())
