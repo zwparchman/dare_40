@@ -29,7 +29,7 @@ pub struct Prefab {
 }
 
 impl Prefab {
-    pub fn spawn(&self, gd: &mut GameData) -> id_type{
+    pub fn spawn(&self, gd: &mut EcsWorld) -> id_type{
         let id = gd.alloc_id();
 
         if let Some(val) = self.drawable.clone() {
@@ -220,13 +220,13 @@ impl Spawner {
         self.prefabs.push(val);
     }
 
-    pub fn spawn(&self , mut gd: &mut GameData){
+    pub fn spawn(&self , mut gd: &mut EcsWorld){
         for fab in self.prefabs.clone() {
             fab.spawn(&mut gd);
         }
     }
 
-    pub fn spawn_at_pos(&self , mut gd: &mut GameData, phy: &Physical){
+    pub fn spawn_at_pos(&self , mut gd: &mut EcsWorld, phy: &Physical){
         for fab in self.prefabs.clone() {
             let mut ffab = fab.clone();
             if let Some(ref mut pos) = ffab.physical {
