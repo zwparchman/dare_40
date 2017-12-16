@@ -650,7 +650,7 @@ impl EcsWorld {
 pub struct GameData{
     frame_count: u64,
 
-    spawn_plan: Option<HashMap<u64, Vec<Spawner>>>,
+    spawn_plan: SpawnPlan,
 
     world: EcsWorld,
     difficulty: f32,
@@ -663,7 +663,7 @@ impl GameData {
     fn new() -> Self {
         Self{
             frame_count: 0,
-            spawn_plan: None,
+            spawn_plan: SpawnPlan::new(),
             world: EcsWorld::new(),
             difficulty: 50.0,
             score: 0,
@@ -671,27 +671,19 @@ impl GameData {
         }
     }
 
-
-
     fn step(&mut self){
         {
             let olst;
             let mut replace = false;
             let player_shield_fraction = self.get_player_shield_fraction();
-            if let Some(ref mut plan) = self.spawn_plan {
-                olst = plan.remove(&self.frame_count);
-                // print!("plan size: {}\n", plan.len());
-                if plan.is_empty() {
-                    self.difficulty += 4.0 * player_shield_fraction;
-                    replace=true;
-                }
-            } else {
-                olst = None;
+            olst = self.spawn_plan.remove(&self.frame_count);
+            if self.spawn_plan.is_empty() {
+                self.difficulty += 4.0 * player_shield_fraction;
                 replace=true;
             }
 
             if replace {
-                self.spawn_plan = Some(gen_level(self.difficulty, 500.0, self.frame_count as u32, &mut self.rng));
+                self.spawn_plan = gen_level(self.difficulty, 500.0, self.frame_count as u32, &mut self.rng);
             }
             if let Some(lst) = olst.clone() {
                 for spawner in lst {
@@ -1331,7 +1323,7 @@ fn main(){
 
     let mut gl = GameData::new();
 
-    gl.spawn_plan = Some(gen_level(10.0, 100.0, 0, &mut gl.rng));
+    gl.spawn_plan = gen_level(10.0, 100.0, 0, &mut gl.rng);
 
 
     while ! WindowShouldClose() {
