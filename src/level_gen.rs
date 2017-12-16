@@ -672,7 +672,7 @@ fn gen_enemy_4(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .collidable(Collidable{ radius: 14.0})
         .despawn_left(DespawnFarLeft{})
         .death_event(DeathEventBuilder::new()
-                     .sound_by_name("explosion001.wav".to_string())
+                     .sound_by_name("explosion-small.wav".to_string())
                      .spawner(Arc::new(spawner))
                      .score_add(5)
                      .build())
