@@ -1,6 +1,8 @@
 #[allow(unused)]
 use std::collections::HashMap;
 
+use hibitset::BitSet;
+
 use id_type;
 
 pub trait Storage<T>  where T: Clone {
@@ -15,40 +17,39 @@ pub trait Storage<T>  where T: Clone {
 
 pub struct VectorStorage<T> {
     pub data: Vec<Option<T>>,
-    pub mask: Vec<bool>,
+    // pub mask: Vec<bool>,
+    pub mask: BitSet,
 }
 
 impl<T> Storage<T> for VectorStorage<T> where T: Clone{
     fn new() -> Self {
         Self{
             data: Vec::<Option<T>>::new(),
-            mask: Vec::<bool>::new(),
+            //mask: Vec::<bool>::new(),
+            mask: BitSet::new(),
         }
     }
 
     fn add(&mut self, id: id_type, to_add: T) -> Option<T> {
         if id as usize >= self.data.len() {
             self.data.resize( id as usize + 1, None );
-            self.mask.resize( id as usize + 1, false);
         }
 
         let ret = self.data[id as usize].take();
         self.data[id as usize] = Some(to_add);
 
-        self.mask[id as usize] = true;
+        self.mask.add(id as u32);
 
         return ret;
     }
 
     fn remove(&mut self, id: id_type) -> Option<T> {
+        self.mask.remove(id as u32);
         if id as usize >= self.data.len() {
             return None;
         }
 
         let ret = self.data[id as usize].take();
-
-        self.mask[id as usize] = false;
-
         return ret;
     }
 
@@ -64,11 +65,7 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
     }
 
     fn contains(&self, id: id_type) -> bool {
-        if self.mask.len() <= id as usize {
-            return false;
-        }
-
-        self.mask[id as usize]
+        self.mask.contains(id as u32)
     }
 }
 

@@ -6,6 +6,7 @@
 extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
+extern crate hibitset;
 
 use std::f32;
 
@@ -64,42 +65,6 @@ fn min_float(a: f32, b: f32) -> f32 {
     } else {
         b
     }
-}
-
-#[allow(unused)]
-fn b_and(a: Vec<bool>, b: Vec<bool>) -> Vec<bool> {
-    let small = std::cmp::min(a.len(), b.len());
-    let large = std::cmp::max(a.len(), b.len());
-
-    let mut ret = Vec::<bool>::new();
-
-    for i in 0..small {
-        ret.push(a[i] && b[i]);
-    }
-
-    for _ in small..large {
-        ret.push(false);
-    }
-    return ret;
-}
-
-fn b_or(a: Vec<bool>, b: Vec<bool>) -> Vec<bool> {
-    let small = std::cmp::min(a.len(), b.len());
-    let large = std::cmp::max(a.len(), b.len());
-
-
-    let mut ret = Vec::<bool>::new();
-
-    for i in 0..small {
-        ret.push(a[i] || b[i]);
-    }
-
-    for i in small..large {
-        ret.push(
-            (a.len() > i && a[i]) ||
-            (b.len() > i && b[i]));
-    }
-    return ret;
 }
 
 #[derive(Clone)]
@@ -733,46 +698,41 @@ impl GameData {
 
     fn do_weapon_cooldown(&mut self) {
         let mask = self.world.weapon_list.mask.clone();
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize] { continue; }
-
-            let mut weapon = self.world.weapon_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut weapon = self.world.weapon_list.get(id as id_type).unwrap().clone();
 
             if weapon.gun_cooldown_frames > 0 {
                 weapon.gun_cooldown_frames -= 1;
             }
-            self.world.weapon_list.add(id, weapon);
+            self.world.weapon_list.add(id as id_type, weapon);
         }
     }
 
     fn do_weapon_fire(&mut self) {
-        let mask = b_and( b_and( self.world.weapon_list.mask.clone(), self.world.auto_fire_list.mask.clone() ) , self.world.physical_list.mask.clone());
+        let mask = self.world.weapon_list.mask.clone() & self.world.auto_fire_list.mask.clone() & self.world.physical_list.mask.clone();
 
-        let high_id = self.world.get_max_id();
-        for id in 0..high_id {
-            if high_id < id || !mask[id as usize] { continue; }
-
+        for id in mask {
             let fire = {
-                let ref weapon = self.world.weapon_list.get(id).unwrap();
+                let ref weapon = self.world.weapon_list.get(id as id_type).unwrap();
                 weapon.gun_cooldown_frames <= 0
             };
 
             let pattern = {
-                let ref weapon = self.world.weapon_list.get(id).unwrap();
+                let ref weapon = self.world.weapon_list.get(id as id_type).unwrap();
                 weapon.pattern
             };
 
 
 
             let prefab = {
-                let ref weapon = self.world.weapon_list.get(id).unwrap();
+                let ref weapon = self.world.weapon_list.get(id as id_type).unwrap();
                 weapon.prefab.clone()
             };
 
 
             if fire {
-                let mut weapon = self.world.weapon_list.get(id).unwrap().clone();
-                let phy1 = self.world.physical_list.get(id).unwrap().clone();
+                let mut weapon = self.world.weapon_list.get(id as id_type).unwrap().clone();
+                let phy1 = self.world.physical_list.get(id as id_type).unwrap().clone();
                 if let Some(sound) = weapon.fire_sound.clone() {
                     PlaySound(&*sound);
                 }
@@ -791,7 +751,7 @@ impl GameData {
                     self.world.physical_list.add(bul_id, bul_phy);
 
                 }
-                self.world.weapon_list.add(id, weapon);
+                self.world.weapon_list.add(id as id_type, weapon);
             }
         }
     }
@@ -818,11 +778,9 @@ impl GameData {
     }
 
     fn draw(&mut self){
-        let mask = b_and(self.world.drawable_list.mask.clone() , self.world.physical_list.mask.clone());
-        for id in 0..self.world.get_max_id() {
-            if  ! mask[id as usize] { continue; }
-
-            self.draw_by_id(id);
+        let mask = self.world.drawable_list.mask.clone() & self.world.physical_list.mask.clone();
+        for id in mask {
+            self.draw_by_id(id as id_type);
         }
         //draw UI
         //
@@ -855,10 +813,8 @@ impl GameData {
     fn get_player_cargo(&mut self) -> Vec<Prefab> {
         let mask = self.world.controllable_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            let ship_stats = self.world.player_stats_list.get(id).unwrap().clone();
+        for id in mask {
+            let ship_stats = self.world.player_stats_list.get(id as id_type).unwrap().clone();
             return ship_stats.owned;
         }
         return vec![];
@@ -867,10 +823,8 @@ impl GameData {
     fn get_player_install_fraction(&mut self) -> f32{
         let mask = self.world.controllable_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            let stats = self.world.player_stats_list.get(id).unwrap().clone();
+        for id in mask {
+            let stats = self.world.player_stats_list.get(id as id_type).unwrap().clone();
             return stats.install_progress as f32 / PART_INSTALLED_AT as f32;
         }
         return 0.0;
@@ -881,10 +835,8 @@ impl GameData {
     fn get_player_shield_fraction(&mut self) -> f32{
         let mask = self.world.controllable_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            if let Some(shield) = self.world.shield_list.get(id) {
+        for id in mask {
+            if let Some(shield) = self.world.shield_list.get(id as id_type) {
                 return shield.ammount / shield.max_shield;
             }
         }
@@ -944,16 +896,14 @@ impl GameData {
     }
 
     fn do_install(&mut self){
-        let mask = b_and(self.world.player_stats_list.mask.clone(), self.world.install_list.mask.clone());
+        let mask = self.world.player_stats_list.mask.clone() & self.world.install_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if ! mask[id as usize ] { continue; }
-
-            let mut stats = self.world.player_stats_list.get(id).unwrap();
+        for id in mask {
+            let mut stats = self.world.player_stats_list.get(id as id_type).unwrap();
 
             if stats.owned.len() == 0 { 
                 stats.install_progress = 0; 
-                self.world.player_stats_list.add(id, stats);
+                self.world.player_stats_list.add(id as id_type, stats);
                 continue;
             }
 
@@ -967,8 +917,8 @@ impl GameData {
                 stats.install_progress == 0;
 
                 //apply the upgrade
-                let mut weapon = self.world.weapon_list.get(id).clone().unwrap();
-                let mut shield = self.world.shield_list.get(id).clone().unwrap();
+                let mut weapon = self.world.weapon_list.get(id as id_type).clone().unwrap();
+                let mut shield = self.world.shield_list.get(id as id_type).clone().unwrap();
                 let upgrade = upgrade_prefab.powerup.unwrap().clone();
 
                 weapon.fire_rate *= upgrade.fire_rate_increase;
@@ -986,13 +936,13 @@ impl GameData {
                     weapon.prefab = Arc::new(bullet_prefab.clone());
                 }
 
-                self.world.shield_list.add(id, shield);
-                self.world.weapon_list.add(id, weapon);
+                self.world.shield_list.add(id as id_type, shield);
+                self.world.weapon_list.add(id as id_type, weapon);
                 stats.owned.remove(0);
             }
 
             stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
-            self.world.player_stats_list.add(id, stats);
+            self.world.player_stats_list.add(id as id_type, stats);
         }
     }
 
@@ -1000,17 +950,15 @@ impl GameData {
     fn do_death_check(&mut self){
         let mask = self.world.shield_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            let shield = self.world.shield_list.get(id).unwrap().clone();
-            let pos = self.world.physical_list.get(id).unwrap().clone();
+        for id in mask {
+            let shield = self.world.shield_list.get(id as id_type).unwrap().clone();
+            let pos = self.world.physical_list.get(id as id_type).unwrap().clone();
             if shield.ammount < 0.0 {
-                if let Some(death_event) = self.world.death_event_list.get(id) {
+                if let Some(death_event) = self.world.death_event_list.get(id as id_type) {
 
                     death_event.die(&mut self.world, &pos);
                 }
-                self.world.destroy_later(id);
+                self.world.destroy_later(id as id_type);
             }
         }
 
@@ -1020,22 +968,20 @@ impl GameData {
     fn do_timeout_death(&mut self){
         let mask = self.world.timeout_death_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            let mut timeout = self.world.timeout_death_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut timeout = self.world.timeout_death_list.get(id as id_type).unwrap().clone();
             if timeout.ticks == 0 {
-                let pos = self.world.physical_list.get(id).unwrap().clone();
+                let pos = self.world.physical_list.get(id as id_type).unwrap().clone();
 
-                if let Some(death_event) = self.world.death_event_list.get(id) {
+                if let Some(death_event) = self.world.death_event_list.get(id as id_type) {
 
                     death_event.die(&mut self.world, &pos);
                 }
 
-                self.world.destroy_later(id);
+                self.world.destroy_later(id as id_type);
             } else {
                 timeout.ticks -= 1;
-                self.world.timeout_death_list.add(id, timeout);
+                self.world.timeout_death_list.add(id as id_type, timeout);
             }
         }
 
@@ -1047,26 +993,22 @@ impl GameData {
     fn do_shield_regen(&mut self){
         let mask = self.world.shield_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            let mut shield = self.world.shield_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut shield = self.world.shield_list.get(id as id_type).unwrap().clone();
             shield.ammount +=  shield.regen * FRAME_TIME;
             shield.ammount = min_float(shield.max_shield, shield.ammount);
 
-            self.world.shield_list.add(id, shield);
+            self.world.shield_list.add(id as id_type, shield);
         }
     }
 
     //do the dumb n squared algorithm since I expect n to be small
     fn do_collision(&mut self){
-        let mask = b_and(self.world.physical_list.mask.clone() , self.world.collidable_list.mask.clone());
+        let mask = self.world.physical_list.mask.clone() & self.world.collidable_list.mask.clone();
 
         let mut to_check =  Vec::<id_type>::new();
-        for id in 0..mask.len() as id_type {
-            if !mask[id as usize]{ continue; }
-
-            to_check.push(id);
+        for id in mask {
+            to_check.push(id as id_type);
         }
 
         /* //debug draw
@@ -1130,77 +1072,69 @@ impl GameData {
     }
 
     fn do_despawn(&mut self){
-        let mask = b_and( b_or(self.world.despawn_left.mask.clone() , self.world.despawn_right.mask.clone()) , self.world.physical_list.mask.clone());
+        let mask = (self.world.despawn_left.mask.clone() | self.world.despawn_right.mask.clone()) & self.world.physical_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if  !mask[id as usize] { continue; }
-
-            let phy = self.world.physical_list.get(id).unwrap().clone();
-            if self.world.despawn_left.contains(id) && phy.x < -80.0 {
-                self.world.destroy_later(id);
+        for id in mask {
+            let phy = self.world.physical_list.get(id as id_type).unwrap().clone();
+            if self.world.despawn_left.contains(id as id_type) && phy.x < -80.0 {
+                self.world.destroy_later(id as id_type);
             } 
-            if self.world.despawn_right.contains(id) && phy.x > GetScreenWidth() as f32 + 120.0 {
-                self.world.destroy_later(id);
+            if self.world.despawn_right.contains(id as id_type) && phy.x > GetScreenWidth() as f32 + 120.0 {
+                self.world.destroy_later(id as id_type);
             }
         }
         self.world.maintain();
     }
 
     fn do_player_input(&mut self){
-        let in_mask = b_and( b_and( self.world.controllable_list.mask.clone() , self.world.physical_list.mask.clone() ),  self.world.player_stats_list.mask.clone());
-
-        for id in 0..self.world.get_max_id() {
-            if !in_mask[id as usize]{ continue; }
-
-
-            let player_speed = self.world.player_stats_list.get(id).unwrap().movement_speed * FRAME_TIME;
+        let mask = self.world.controllable_list.mask.clone() & self.world.physical_list.mask.clone() & self.world.player_stats_list.mask.clone();
+        for id in mask {
+            let player_speed = self.world.player_stats_list.get(id as id_type).unwrap().movement_speed * FRAME_TIME;
 
             if IsKeyDown(KEY_W) {
-                let mut phy = self.world.physical_list.get(id).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
                 phy.y -= player_speed;
                 phy.y = max_float(phy.y, 40.0);
-                self.world.physical_list.add(id, phy);
+                self.world.physical_list.add(id as id_type, phy);
             }
             if IsKeyDown(KEY_S) {
-                let mut phy = self.world.physical_list.get(id).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
                 phy.y += player_speed;
                 phy.y = min_float(phy.y, GetScreenHeight() as f32 - 40.0);
-                self.world.physical_list.add(id, phy);
+                self.world.physical_list.add(id as id_type, phy);
             }
 
             if IsKeyDown(KEY_D) {
-                let mut phy = self.world.physical_list.get(id).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
                 phy.x += player_speed;
                 phy.x = min_float(phy.x, GetScreenWidth() as f32 - 140.0);
-                self.world.physical_list.add(id, phy);
+                self.world.physical_list.add(id as id_type, phy);
             }
 
             if IsKeyDown(KEY_A) {
-                let mut phy = self.world.physical_list.get(id).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
                 phy.x -= player_speed;
                 phy.x = max_float(phy.x, 50.0);
-                self.world.physical_list.add(id, phy);
+                self.world.physical_list.add(id as id_type, phy);
             }
 
             if IsKeyPressed(KEY_SPACE) {
-                self.world.auto_fire_list.add(id, AutoFire{});
-                self.world.install_list.remove(id);
+                self.world.auto_fire_list.add(id as id_type, AutoFire{});
+                self.world.install_list.remove(id as id_type);
             }
 
             if IsKeyReleased(KEY_SPACE) {
-                self.world.auto_fire_list.remove(id);
-                self.world.install_list.add(id, Install{});
+                self.world.auto_fire_list.remove(id as id_type);
+                self.world.install_list.add(id as id_type, Install{});
             }
         }
     }
 
     fn do_sine_movement(&mut self){
         let mask = self.world.sine_movement_list.mask.clone();
-        for id in 0..mask.len() as id_type {
-            if  !mask[id as usize] { continue; }
-
-            let mut phy = self.world.physical_list.get(id).unwrap().clone();
-            let mut sine = self.world.sine_movement_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
+            let mut sine = self.world.sine_movement_list.get(id as id_type).unwrap().clone();
 
             let freq = sine.frequency;
             let amplitude = sine.amplitude;
@@ -1214,18 +1148,16 @@ impl GameData {
 
             phy.y += diff;
 
-            self.world.physical_list.add(id, phy);
-            self.world.sine_movement_list.add(id, sine);
+            self.world.physical_list.add(id as id_type, phy);
+            self.world.sine_movement_list.add(id as id_type, sine);
         }
     }
 
     fn do_sine_movement_x(&mut self){
         let mask = self.world.sine_movement_x_list.mask.clone();
-        for id in 0..mask.len() as id_type {
-            if  !mask[id as usize] { continue; }
-
-            let mut phy = self.world.physical_list.get(id).unwrap().clone();
-            let mut sine = self.world.sine_movement_x_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
+            let mut sine = self.world.sine_movement_x_list.get(id as id_type).unwrap().clone();
 
             let freq = sine.frequency;
             let amplitude = sine.amplitude;
@@ -1239,8 +1171,8 @@ impl GameData {
 
             phy.x += diff;
 
-            self.world.physical_list.add(id, phy);
-            self.world.sine_movement_x_list.add(id, sine);
+            self.world.physical_list.add(id as id_type, phy);
+            self.world.sine_movement_x_list.add(id as id_type, sine);
         }
     }
 
@@ -1248,28 +1180,26 @@ impl GameData {
     fn do_stop_at(&mut self){
         let mask = self.world.stop_at_list.mask.clone();
 
-        for id in 0..mask.len() as id_type {
-            if ! mask[id as usize] { continue; }
+        for id in mask {
 
-            let stop_at = self.world.stop_at_list.get(id).unwrap();
-            let mut phy = self.world.physical_list.get(id).unwrap();
+            let stop_at = self.world.stop_at_list.get(id as id_type).unwrap();
+            let mut phy = self.world.physical_list.get(id as id_type).unwrap();
 
             if stop_at.xloc >= phy.x {
                 phy.xvel = 0.0;
-                self.world.physical_list.add(id, phy);
-                self.world.stop_at_list.remove(id);
+                self.world.physical_list.add(id as id_type, phy);
+                self.world.stop_at_list.remove(id as id_type);
             }
         }
     }
 
     fn do_movement(&mut self){
         let mask = self.world.physical_list.mask.clone();
-        for id in 0..self.world.get_max_id() as id_type {
-            if ! mask[id as usize] { continue; }
-            let mut phy = self.world.physical_list.get(id).unwrap().clone();
+        for id in mask {
+            let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
             phy.x += phy.xvel * FRAME_TIME;
             phy.y += phy.yvel * FRAME_TIME;
-            self.world.physical_list.add(id, phy);
+            self.world.physical_list.add(id as id_type, phy);
         }
     }
 
