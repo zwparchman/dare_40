@@ -577,6 +577,7 @@ impl EcsWorld {
         }
     }
 
+    #[allow(unused)]
     fn get_max_id(&self) -> id_type {
         self.max_id
     }
@@ -644,6 +645,7 @@ pub struct GameData{
     spawn_plan: Option<HashMap<u64, Vec<Spawner>>>,
 
     world: EcsWorld,
+    difficulty: f32,
 }
 
 impl GameData {
@@ -652,6 +654,7 @@ impl GameData {
             frame_count: 0,
             spawn_plan: None,
             world: EcsWorld::new(),
+            difficulty: 50.0,
         }
     }
 
@@ -659,16 +662,26 @@ impl GameData {
 
     fn step(&mut self){
         {
-            let frame = &self.frame_count.clone();
+            let player_shield_fraction = self.get_player_shield_fraction();
             let olst;
+            let mut replace = false;
             if let Some(ref mut plan) = self.spawn_plan {
-                olst = plan.remove(&frame).clone();
+                olst = plan.remove(&self.frame_count);
+                // print!("plan size: {}\n", plan.len());
+                if plan.len() <= 1 {
+                    self.difficulty += 10.0 * player_shield_fraction;
+                    replace=true;
+                }
             } else {
                 olst = None;
+                replace=true;
             }
 
+            if replace {
+                self.spawn_plan = Some(gen_level(self.difficulty, 500.0, self.frame_count as u32));
+            }
             if let Some(lst) = olst.clone() {
-                print!("Spawning on frame {}\n", frame);
+                print!("Spawning on frame {}\n", self.frame_count);
                 for spawner in lst {
                     spawner.spawn(&mut self.world);
                 }
@@ -676,7 +689,6 @@ impl GameData {
         }
 
 
-        self.frame_count+=1;
 
         self.do_player_input();
         self.do_sine_movement();
@@ -693,6 +705,7 @@ impl GameData {
         self.do_weapon_fire();
 
         self.world.maintain();
+        self.frame_count+=1;
     }
 
 
@@ -1089,7 +1102,9 @@ impl GameData {
     fn do_player_input(&mut self){
         let mask = self.world.controllable_list.mask.clone() & self.world.physical_list.mask.clone() & self.world.player_stats_list.mask.clone();
         for id in mask {
-            let player_speed = self.world.player_stats_list.get(id as id_type).unwrap().movement_speed * FRAME_TIME;
+            let player_speed = self.world.player_stats_list
+                                .get(id as id_type)
+                                .unwrap().movement_speed * FRAME_TIME;
 
             if IsKeyDown(KEY_W) {
                 let mut phy = self.world.physical_list.get(id as id_type).unwrap().clone();
@@ -1299,7 +1314,7 @@ fn main(){
 
     let mut gl = GameData::new();
 
-    gl.spawn_plan = Some(gen_level(10.0, 100.0));
+    gl.spawn_plan = Some(gen_level(25.0, 500.0, 0));
 
 
     while ! WindowShouldClose() {

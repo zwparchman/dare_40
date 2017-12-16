@@ -4,6 +4,7 @@ use *;
 use rand;
 use rand::Rng;
 use std::collections::HashMap;
+use rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 
 #[derive(Clone)]
 pub struct Prefab {
@@ -691,8 +692,9 @@ fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> 
     return rng.choose(&[a,b,c,d]).unwrap().clone();
 }
 
-//*
-pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
+type GenThing = fn (x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab;
+
+pub fn gen_level(difficulty: f32, length: f32, start_frame: u32) -> HashMap<u64, Vec<Spawner>>{
     let mut ret = HashMap::<u64,Vec<Spawner>>::new();
 
     let mut rng = rand::isaac::Isaac64Rng::new_unseeded();
@@ -701,21 +703,37 @@ pub fn gen_level(_difficulty: f32, _length: f32) -> HashMap<u64, Vec<Spawner>>{
     spawner.prefabs.push(gen_player());
     ret.insert(0, vec![spawner.clone()]);
 
-    for i in 1..1000 {
-        spawner = Spawner::new();
-        for _j in 0..(rng.gen_range(0.0,30.0)/10.0/i as f32) as i32 {
-            spawner.prefabs.push(gen_enemy_1(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
-        }
-        spawner.prefabs.push(gen_enemy_2(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
-        spawner.prefabs.push(gen_enemy_3(rng.gen_range(1400.0, 1500.0), rng.gen_range(300.0, 400.0), &mut rng));
-        for _ in 1..3 {
-            spawner.prefabs.push(gen_enemy_4(rng.gen_range(1400.0, 1500.0), rng.gen_range(100.0, 600.0), &mut rng));
-        }
-        spawner.prefabs.push(gen_enemy_5(rng.gen_range(1400.0, 1500.0), rng.gen_range(100.0, 600.0), &mut rng));
-        spawner.prefabs.push( gen_random_upgrade(1400.0, rng.gen_range(0.0, 700.0), &mut rng));
+    let mut weights = vec![ 
+        Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },
+        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
+        Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 30.0) },
+        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 50.0) },
+        Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 20.0) },
+        Weighted{ weight: 2, item: (gen_random_upgrade as GenThing, 1.0) },
+    ]; 
 
-        let when: u64 = 1 + (FRAME_RATE * 4.0 * (i-1) as f32) as u64;
-        ret.insert( when, vec![spawner.clone()]);
+    let chooser = WeightedChoice::new(&mut weights);
+
+    let mut len_left = length - rng.gen_range(0.0, 100.0);
+    while len_left > 0.0 {
+        spawner = Spawner::new();
+        let mut cur_diff = difficulty;
+        while cur_diff > 0.0 {
+            let (fun,dif) = chooser.ind_sample(&mut rng);
+            cur_diff -= dif;
+            spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
+        }
+
+        let offset = rng.gen_range(0.0, 500.0);
+        let when: u64 = start_frame as u64 + len_left as u64;
+
+        // print!("when {}\n", when);
+        if ret.contains_key(&when) {
+            ret.get_mut(&when).unwrap().push(spawner);
+        } else {
+            ret.insert( when, vec![spawner.clone()]);
+        }
+        len_left -= offset;
     }
     /*
     let mut cur = 0.0;
