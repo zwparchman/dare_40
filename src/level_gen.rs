@@ -261,7 +261,7 @@ fn gen_player() -> Prefab{
             install_finish_sound: load_sound("upgrade-finished.wav".to_string()).unwrap()
         })
         .shield( ShieldBuilder::new()
-                 .regen(0.10)
+                 .regen(1.00)
                  .ammount(30.0)
                  .build())
         .weapon( WeaponBuilder::new()
@@ -397,6 +397,7 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .collidable(Collidable{ radius: 20.0})
         .despawn_left(DespawnFarLeft{})
         .death_event(DeathEventBuilder::new()
+                     .score_add(20)
                      .sound_by_name("explosion001.wav".to_string())
                      .build())
         .shield( ShieldBuilder::new()
@@ -454,6 +455,7 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .despawn_left(DespawnFarLeft{})
         .death_event(DeathEventBuilder::new()
                      .sound_by_name("explosion001.wav".to_string())
+                     .score_add(50)
                      .build())
         .shield( ShieldBuilder::new()
                  .ammount(30.0)
@@ -509,6 +511,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .despawn_left(DespawnFarLeft{})
         .death_event(DeathEventBuilder::new()
                      .sound_by_name("explosion001.wav".to_string())
+                     .score_add(10)
                      .build())
         .shield( ShieldBuilder::new()
                  .ammount(11.0)
@@ -616,6 +619,7 @@ fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab 
                 .build())
         .collidable(Collidable{radius: 30.0})
         .death_event(DeathEventBuilder::new()
+                     .score_add(5)
                      .sound_by_name("explosion002.wav".to_string())
                      .build())
         .despawn_left(DespawnFarLeft{})
@@ -670,6 +674,7 @@ fn gen_enemy_4(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .death_event(DeathEventBuilder::new()
                      .sound_by_name("explosion001.wav".to_string())
                      .spawner(Arc::new(spawner))
+                     .score_add(5)
                      .build())
         .shield( ShieldBuilder::new()
                  .ammount(1.0)
@@ -694,14 +699,14 @@ fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> 
 
 type GenThing = fn (x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab;
 
-pub fn gen_level(difficulty: f32, length: f32, start_frame: u32) -> HashMap<u64, Vec<Spawner>>{
+pub fn gen_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> HashMap<u64, Vec<Spawner>>{
     let mut ret = HashMap::<u64,Vec<Spawner>>::new();
-
-    let mut rng = rand::isaac::Isaac64Rng::new_unseeded();
 
     let mut spawner = Spawner::new();
     spawner.prefabs.push(gen_player());
-    ret.insert(0, vec![spawner.clone()]);
+    if start_frame == 0 {
+        ret.insert(0, vec![spawner.clone()]);
+    }
 
     let mut weights = vec![ 
         Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },

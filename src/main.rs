@@ -234,13 +234,15 @@ impl DrawableBuilder {
 #[derive(Clone)]
 pub struct DeathEvent{
     sound: Arc<Sound>,
-    spawner: Arc<Spawner>
+    spawner: Arc<Spawner>,
+    score_add: i64,
 }
 
 impl DeathEvent{
-    fn die(&self, mut world: &mut EcsWorld, pos: &Physical){
+    fn die(&self, mut world: &mut EcsWorld, pos: &Physical) -> i64 {
         PlaySound(&self.sound);
         self.spawner.spawn_at_pos(&mut world, &pos);
+        self.score_add
     }
 }
 
@@ -253,6 +255,7 @@ impl DeathEventBuilder {
         DeathEventBuilder{ thing: DeathEvent {
             sound: load_sound("scilence.wav".to_string()).unwrap(),
             spawner: Arc::new(Spawner::new()),
+            score_add: 0,
         }}
     }
     fn spawner(mut self, val: Arc<Spawner>) -> Self {
@@ -261,6 +264,11 @@ impl DeathEventBuilder {
     }
     fn sound_by_name(mut self, val: String) -> Self{
         self.thing.sound = load_sound(val).unwrap();
+        self
+    }
+
+    fn score_add(mut self, val: i64) -> Self {
+        self.thing.score_add = val;
         self
     }
 
@@ -646,6 +654,9 @@ pub struct GameData{
 
     world: EcsWorld,
     difficulty: f32,
+    score: i64,
+
+    rng: rand::isaac::Isaac64Rng,
 }
 
 impl GameData {
@@ -655,6 +666,8 @@ impl GameData {
             spawn_plan: None,
             world: EcsWorld::new(),
             difficulty: 50.0,
+            score: 0,
+            rng: rand::isaac::Isaac64Rng::new_unseeded(),
         }
     }
 
@@ -662,14 +675,14 @@ impl GameData {
 
     fn step(&mut self){
         {
-            let player_shield_fraction = self.get_player_shield_fraction();
             let olst;
             let mut replace = false;
+            let player_shield_fraction = self.get_player_shield_fraction();
             if let Some(ref mut plan) = self.spawn_plan {
                 olst = plan.remove(&self.frame_count);
                 // print!("plan size: {}\n", plan.len());
-                if plan.len() <= 1 {
-                    self.difficulty += 10.0 * player_shield_fraction;
+                if plan.is_empty() {
+                    self.difficulty += 4.0 * player_shield_fraction;
                     replace=true;
                 }
             } else {
@@ -678,10 +691,9 @@ impl GameData {
             }
 
             if replace {
-                self.spawn_plan = Some(gen_level(self.difficulty, 500.0, self.frame_count as u32));
+                self.spawn_plan = Some(gen_level(self.difficulty, 500.0, self.frame_count as u32, &mut self.rng));
             }
             if let Some(lst) = olst.clone() {
-                print!("Spawning on frame {}\n", self.frame_count);
                 for spawner in lst {
                     spawner.spawn(&mut self.world);
                 }
@@ -820,7 +832,12 @@ impl GameData {
         DrawRectangle(1250, 400, 40, (self.get_player_install_fraction()*100.0) as i32, Color{r:200, g:200, b:200, a:255});
         DrawRectangleLines(1250, 400, 40, 100, Color{r:200, g:200, b:200, a:255});
 
-
+        //draw score
+        {
+            let white = Color{r: 255, g:255, b:255, a:255};
+            let text = format!("Score: {}", self.score);
+            DrawText(text.as_str(), 100,20,20, white);
+        }
     }
 
     fn get_player_cargo(&mut self) -> Vec<Prefab> {
@@ -845,7 +862,7 @@ impl GameData {
 
 
 
-    fn get_player_shield_fraction(&mut self) -> f32{
+    fn get_player_shield_fraction(&self) -> f32{
         let mask = self.world.controllable_list.mask.clone();
 
         for id in mask {
@@ -969,7 +986,7 @@ impl GameData {
             if shield.ammount < 0.0 {
                 if let Some(death_event) = self.world.death_event_list.get(id as id_type) {
 
-                    death_event.die(&mut self.world, &pos);
+                    self.score += death_event.die(&mut self.world, &pos);
                 }
                 self.world.destroy_later(id as id_type);
             }
@@ -988,7 +1005,7 @@ impl GameData {
 
                 if let Some(death_event) = self.world.death_event_list.get(id as id_type) {
 
-                    death_event.die(&mut self.world, &pos);
+                    self.score += death_event.die(&mut self.world, &pos);
                 }
 
                 self.world.destroy_later(id as id_type);
@@ -1314,7 +1331,7 @@ fn main(){
 
     let mut gl = GameData::new();
 
-    gl.spawn_plan = Some(gen_level(25.0, 500.0, 0));
+    gl.spawn_plan = Some(gen_level(10.0, 100.0, 0, &mut gl.rng));
 
 
     while ! WindowShouldClose() {

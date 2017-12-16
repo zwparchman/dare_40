@@ -155,6 +155,15 @@ pub fn ClearBackground(color : Color) {
 
 #[allow(unused)]
 #[allow(bad_style)]
+pub fn DrawText(text: &str, x: i32, y: i32, font_size: i32, color:Color){
+    unsafe{
+        let text_c = CString::new(text).unwrap();
+        raylib_raw::DrawText(text_c.as_ptr(), x,y, font_size, color)
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
 pub fn DrawTextureEx(texture : Texture2D, pos: Vector2f, rot: f32, scale: f32, color: Color){
     let vec = raylib_raw::Vector2 { x: pos.x, y: pos.y };
     unsafe{
