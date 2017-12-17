@@ -41,7 +41,7 @@ mod sprite_loader;
 use storage::*;
 mod storage;
 
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashSet};
 
 const FRAME_RATE: f32 = 60.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
@@ -665,7 +665,7 @@ impl GameData {
             world: EcsWorld::new(),
             difficulty: 50.0,
             score: 0,
-            // rng: rand::isaac::Isaac64Rng::new_unseeded(),
+            // rng: rand::isaac::Isaac64Rng::from_seed(&[1,2,3]),
             rng: rand::isaac::Isaac64Rng::from_seed(&[rand::thread_rng().gen::<u64>()]),
         }
     }
@@ -673,25 +673,23 @@ impl GameData {
     fn step(&mut self){
         {
             let olst;
-            let mut replace = false;
-            let player_shield_fraction = self.get_player_shield_fraction();
             olst = self.spawn_plan.remove(&self.frame_count);
+
             if self.spawn_plan.is_empty() {
+                let player_shield_fraction = self.get_player_shield_fraction();
                 self.difficulty += 4.0 * player_shield_fraction;
-                replace=true;
+                self.spawn_plan = gen_level(self.difficulty,
+                                            500.0,
+                                            self.frame_count as u32,
+                                            &mut self.rng);
             }
 
-            if replace {
-                self.spawn_plan = gen_level(self.difficulty, 500.0, self.frame_count as u32, &mut self.rng);
-            }
-            if let Some(lst) = olst.clone() {
+            if let Some(lst) = olst {
                 for spawner in lst {
                     spawner.spawn(&mut self.world);
                 }
             }
         }
-
-
 
         self.do_player_input();
         self.do_sine_movement();
@@ -715,7 +713,7 @@ impl GameData {
     fn do_weapon_cooldown(&mut self) {
         let mask = self.world.weapon_list.mask.clone();
         for id in mask {
-            let mut weapon = self.world.weapon_list.get(id as IDType).unwrap().clone();
+            let mut weapon = self.world.weapon_list.get(id as IDType).unwrap();
 
             if weapon.gun_cooldown_frames > 0 {
                 weapon.gun_cooldown_frames -= 1;
@@ -773,8 +771,8 @@ impl GameData {
     }
 
     fn draw_by_id( &self, id: IDType) {
-            let drw = self.world.drawable_list.get(id).unwrap().clone();
-            let pos = self.world.physical_list.get(id).unwrap().clone();
+            let drw = self.world.drawable_list.get(id).unwrap();
+            let pos = self.world.physical_list.get(id).unwrap();
 
             let txt = drw.texture;
             let src_rect = Rectangle {x:0, y:0, width:txt.width, height:txt.height};
@@ -835,7 +833,7 @@ impl GameData {
         let mask = self.world.controllable_list.mask.clone();
 
         for id in mask {
-            let ship_stats = self.world.player_stats_list.get(id as IDType).unwrap().clone();
+            let ship_stats = self.world.player_stats_list.get(id as IDType).unwrap();
             return ship_stats.owned;
         }
         return vec![];
@@ -845,7 +843,7 @@ impl GameData {
         let mask = self.world.controllable_list.mask.clone();
 
         for id in mask {
-            let stats = self.world.player_stats_list.get(id as IDType).unwrap().clone();
+            let stats = self.world.player_stats_list.get(id as IDType).unwrap();
             return stats.install_progress as f32 / PART_INSTALLED_AT as f32;
         }
         return 0.0;
@@ -886,8 +884,8 @@ impl GameData {
 
     fn handle_collision(&mut self, a: IDType, b: IDType) {
         if self.world.controllable_list.contains(a) && self.world.powerup_list.contains(b) {
-            let mut stats = self.world.player_stats_list.get(a).unwrap().clone();
-            let power = self.world.powerup_list.get(b).unwrap().clone();
+            let mut stats = self.world.player_stats_list.get(a).unwrap();
+            let power = self.world.powerup_list.get(b).unwrap();
 
             stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
 
@@ -902,11 +900,11 @@ impl GameData {
         }
 
         if self.world.shield_list.contains(a) && self.world.bullet_list.contains(b) {
-            if  self.world.team_list.get(a).unwrap_or(Team{team:-1}).clone().team != 
-                self.world.team_list.get(b).unwrap_or(Team{team:-2}).clone().team {
+            if  self.world.team_list.get(a).unwrap_or(Team{team:-1}).team != 
+                self.world.team_list.get(b).unwrap_or(Team{team:-2}).team {
 
                 let mut shield = self.world.shield_list.get(a).unwrap();
-                let bullet = self.world.bullet_list.get(b).unwrap().clone();
+                let bullet = self.world.bullet_list.get(b).unwrap();
 
                 shield.ammount -= bullet.damage;
                 self.world.shield_list.add(a, shield);
@@ -938,9 +936,9 @@ impl GameData {
                 stats.install_progress == 0;
 
                 //apply the upgrade
-                let mut weapon = self.world.weapon_list.get(id as IDType).clone().unwrap();
-                let mut shield = self.world.shield_list.get(id as IDType).clone().unwrap();
-                let upgrade = upgrade_prefab.powerup.unwrap().clone();
+                let mut weapon = self.world.weapon_list.get(id as IDType).unwrap();
+                let mut shield = self.world.shield_list.get(id as IDType).unwrap();
+                let upgrade = upgrade_prefab.powerup.unwrap();
 
                 weapon.fire_rate *= upgrade.fire_rate_increase;
                 shield.regen *= upgrade.regen_increase;
@@ -948,7 +946,7 @@ impl GameData {
                 weapon.pattern += upgrade.shot_increase;
 
                 {
-                    let bullet: &mut Bullet = &mut weapon.clone().prefab.bullet.clone().unwrap();
+                    let bullet: &mut Bullet = &mut weapon.prefab.bullet.clone().unwrap();
                     bullet.damage *= upgrade.fire_damage_increase;
 
                     let mut wc = weapon.clone();
@@ -972,8 +970,8 @@ impl GameData {
         let mask = self.world.shield_list.mask.clone();
 
         for id in mask {
-            let shield = self.world.shield_list.get(id as IDType).unwrap().clone();
-            let pos = self.world.physical_list.get(id as IDType).unwrap().clone();
+            let shield = self.world.shield_list.get(id as IDType).unwrap();
+            let pos = self.world.physical_list.get(id as IDType).unwrap();
             if shield.ammount < 0.0 {
                 if let Some(death_event) = self.world.death_event_list.get(id as IDType) {
 
@@ -990,9 +988,9 @@ impl GameData {
         let mask = self.world.timeout_death_list.mask.clone();
 
         for id in mask {
-            let mut timeout = self.world.timeout_death_list.get(id as IDType).unwrap().clone();
+            let mut timeout = self.world.timeout_death_list.get(id as IDType).unwrap();
             if timeout.ticks == 0 {
-                let pos = self.world.physical_list.get(id as IDType).unwrap().clone();
+                let pos = self.world.physical_list.get(id as IDType).unwrap();
 
                 if let Some(death_event) = self.world.death_event_list.get(id as IDType) {
 
@@ -1015,7 +1013,7 @@ impl GameData {
         let mask = self.world.shield_list.mask.clone();
 
         for id in mask {
-            let mut shield = self.world.shield_list.get(id as IDType).unwrap().clone();
+            let mut shield = self.world.shield_list.get(id as IDType).unwrap();
             shield.ammount +=  shield.regen * FRAME_TIME;
             shield.ammount = min_float(shield.max_shield, shield.ammount);
 
@@ -1054,9 +1052,9 @@ impl GameData {
                     let y = delta_y * j;
                     let rect = Rectangle{x: x, y: y, width: delta_x, height: delta_y };
 
-                    for id in to_check.clone() {
-                        if self.is_in_rect(&rect, id) {
-                            group.push(id);
+                    for id in to_check.iter() {
+                        if self.is_in_rect(&rect, *id) {
+                            group.push(*id);
                         }
                     }
                     groups.push(group);
@@ -1096,7 +1094,7 @@ impl GameData {
         let mask = (self.world.despawn_left.mask.clone() | self.world.despawn_right.mask.clone()) & self.world.physical_list.mask.clone();
 
         for id in mask {
-            let phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+            let phy = self.world.physical_list.get(id as IDType).unwrap();
             if self.world.despawn_left.contains(id as IDType) && phy.x < -80.0 {
                 self.world.destroy_later(id as IDType);
             } 
@@ -1108,34 +1106,36 @@ impl GameData {
     }
 
     fn do_player_input(&mut self){
-        let mask = self.world.controllable_list.mask.clone() & self.world.physical_list.mask.clone() & self.world.player_stats_list.mask.clone();
+        let mask = self.world.controllable_list.mask.clone() &
+                   self.world.physical_list.mask.clone() &
+                   self.world.player_stats_list.mask.clone();
         for id in mask {
             let player_speed = self.world.player_stats_list
                                 .get(id as IDType)
                                 .unwrap().movement_speed * FRAME_TIME;
 
             if IsKeyDown(KEY_W) {
-                let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as IDType).unwrap();
                 phy.y -= player_speed;
                 phy.y = max_float(phy.y, 40.0);
                 self.world.physical_list.add(id as IDType, phy);
             }
             if IsKeyDown(KEY_S) {
-                let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as IDType).unwrap();
                 phy.y += player_speed;
                 phy.y = min_float(phy.y, GetScreenHeight() as f32 - 40.0);
                 self.world.physical_list.add(id as IDType, phy);
             }
 
             if IsKeyDown(KEY_D) {
-                let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as IDType).unwrap();
                 phy.x += player_speed;
                 phy.x = min_float(phy.x, GetScreenWidth() as f32 - 140.0);
                 self.world.physical_list.add(id as IDType, phy);
             }
 
             if IsKeyDown(KEY_A) {
-                let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+                let mut phy = self.world.physical_list.get(id as IDType).unwrap();
                 phy.x -= player_speed;
                 phy.x = max_float(phy.x, 50.0);
                 self.world.physical_list.add(id as IDType, phy);
@@ -1156,8 +1156,8 @@ impl GameData {
     fn do_sine_movement(&mut self){
         let mask = self.world.sine_movement_list.mask.clone();
         for id in mask {
-            let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
-            let mut sine = self.world.sine_movement_list.get(id as IDType).unwrap().clone();
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+            let mut sine = self.world.sine_movement_list.get(id as IDType).unwrap();
 
             let freq = sine.frequency;
             let amplitude = sine.amplitude;
@@ -1179,8 +1179,8 @@ impl GameData {
     fn do_sine_movement_x(&mut self){
         let mask = self.world.sine_movement_x_list.mask.clone();
         for id in mask {
-            let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
-            let mut sine = self.world.sine_movement_x_list.get(id as IDType).unwrap().clone();
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+            let mut sine = self.world.sine_movement_x_list.get(id as IDType).unwrap();
 
             let freq = sine.frequency;
             let amplitude = sine.amplitude;
@@ -1219,7 +1219,7 @@ impl GameData {
     fn do_movement(&mut self){
         let mask = self.world.physical_list.mask.clone();
         for id in mask {
-            let mut phy = self.world.physical_list.get(id as IDType).unwrap().clone();
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
             phy.x += phy.xvel * FRAME_TIME;
             phy.y += phy.yvel * FRAME_TIME;
             self.world.physical_list.add(id as IDType, phy);

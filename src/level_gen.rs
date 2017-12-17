@@ -835,7 +835,7 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut r
         Weighted{ weight: 1, item: gen_level_bomber as GenLevel },
         Weighted{ weight: 1, item: gen_level_bad_upgrade as GenLevel },
         Weighted{ weight: 2, item: gen_level_simple as GenLevel },
-        Weighted{ weight: 2, item: gen_level_normal as GenLevel },
+        Weighted{ weight: 5, item: gen_level_normal as GenLevel },
     ];
 
     let chooser = WeightedChoice::new(&mut weights);
