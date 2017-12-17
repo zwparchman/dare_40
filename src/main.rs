@@ -7,7 +7,6 @@ extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
 extern crate hibitset;
-extern crate synth;
 
 use std::f32;
 
