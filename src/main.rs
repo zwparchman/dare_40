@@ -657,13 +657,16 @@ pub struct GameData{
 
 impl GameData {
     fn new() -> Self {
+        use rand::Rng;
+        use rand::SeedableRng;
         Self{
             frame_count: 0,
             spawn_plan: SpawnPlan::new(),
             world: EcsWorld::new(),
             difficulty: 50.0,
             score: 0,
-            rng: rand::isaac::Isaac64Rng::new_unseeded(),
+            // rng: rand::isaac::Isaac64Rng::new_unseeded(),
+            rng: rand::isaac::Isaac64Rng::from_seed(&[rand::thread_rng().gen::<u64>()]),
         }
     }
 
