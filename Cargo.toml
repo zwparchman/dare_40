@@ -9,6 +9,7 @@ lazy_static = "*"
 cached = "0.4.1"
 nalgebra = "0.13.1"
 hibitset = "*"
+synth = "*"
 
 quickersort = "3.0"
 rand = "0.3"

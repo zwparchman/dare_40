@@ -41,13 +41,10 @@ mod sprite_loader;
 use storage::*;
 mod storage;
 
-
 use std::collections::{HashMap,HashSet};
-
 
 const FRAME_RATE: f32 = 60.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
-
 
 const SLOWDOWN_FACTOR: f32 = 0.6;
 
@@ -532,22 +529,22 @@ pub struct EcsWorld {
     drawable_list: VectorStorage<Drawable>,
     physical_list: VectorStorage<Physical>,
     collidable_list: VectorStorage<Collidable>,
-    controllable_list: VectorStorage<PlayerControl>,
-    bullet_list: VectorStorage<Bullet>,
-    shield_list: VectorStorage<Shield>,
-    despawn_left: VectorStorage<DespawnFarLeft>,
-    despawn_right: VectorStorage<DespawnFarRight>,
-    powerup_list: VectorStorage<Powerup>,
-    player_stats_list: VectorStorage<PlayerStats>,
-    weapon_list: VectorStorage<Weapon>,
-    auto_fire_list: VectorStorage<AutoFire>,
-    sine_movement_list: VectorStorage<SineMovement>,
-    sine_movement_x_list: VectorStorage<SineMovementX>,
+    controllable_list: HashStorage<PlayerControl>,
+    bullet_list: HashStorage<Bullet>,
+    shield_list: HashStorage<Shield>,
+    despawn_left: HashStorage<DespawnFarLeft>,
+    despawn_right: HashStorage<DespawnFarRight>,
+    powerup_list: HashStorage<Powerup>,
+    player_stats_list: HashStorage<PlayerStats>,
+    weapon_list: HashStorage<Weapon>,
+    auto_fire_list: HashStorage<AutoFire>,
+    sine_movement_list: HashStorage<SineMovement>,
+    sine_movement_x_list: HashStorage<SineMovementX>,
     team_list: VectorStorage<Team>,
-    install_list: VectorStorage<Install>,
-    death_event_list: VectorStorage<DeathEvent>,
-    stop_at_list: VectorStorage<StopAt>,
-    timeout_death_list: VectorStorage<TimeoutDeath>,
+    install_list: HashStorage<Install>,
+    death_event_list: HashStorage<DeathEvent>,
+    stop_at_list: HashStorage<StopAt>,
+    timeout_death_list: HashStorage<TimeoutDeath>,
 
     unused_ids: Vec<IDType>,
     max_id: IDType,
@@ -561,23 +558,22 @@ impl EcsWorld {
             drawable_list: VectorStorage::<Drawable>::new(),
             physical_list: VectorStorage::<Physical>::new(),
             collidable_list: VectorStorage::<Collidable>::new(),
-            controllable_list: VectorStorage::<PlayerControl>::new(),
-            bullet_list: VectorStorage::<Bullet>::new(),
-            shield_list: VectorStorage::<Shield>::new(),
-            despawn_left: VectorStorage::<DespawnFarLeft>::new(),
-            despawn_right: VectorStorage::<DespawnFarRight>::new(),
-            powerup_list: VectorStorage::<Powerup>::new(),
-            player_stats_list: VectorStorage::<PlayerStats>::new(),
-            weapon_list: VectorStorage::<Weapon>::new(),
-            auto_fire_list: VectorStorage::<AutoFire>::new(),
-            sine_movement_list: VectorStorage::<SineMovement>::new(),
-            sine_movement_x_list: VectorStorage::<SineMovementX>::new(),
+            controllable_list: HashStorage::<PlayerControl>::new(),
+            bullet_list: HashStorage::<Bullet>::new(),
+            shield_list: HashStorage::<Shield>::new(),
+            despawn_left: HashStorage::<DespawnFarLeft>::new(),
+            despawn_right: HashStorage::<DespawnFarRight>::new(),
+            powerup_list: HashStorage::<Powerup>::new(),
+            player_stats_list: HashStorage::<PlayerStats>::new(),
+            weapon_list: HashStorage::<Weapon>::new(),
+            auto_fire_list: HashStorage::<AutoFire>::new(),
+            sine_movement_list: HashStorage::<SineMovement>::new(),
+            sine_movement_x_list: HashStorage::<SineMovementX>::new(),
             team_list: VectorStorage::<Team>::new(),
-            install_list: VectorStorage::<Install>::new(),
-            death_event_list: VectorStorage::<DeathEvent>::new(),
-            stop_at_list: VectorStorage::<StopAt>::new(),
-            timeout_death_list: VectorStorage::<TimeoutDeath>::new(),
-
+            install_list: HashStorage::<Install>::new(),
+            death_event_list: HashStorage::<DeathEvent>::new(),
+            stop_at_list: HashStorage::<StopAt>::new(),
+            timeout_death_list: HashStorage::<TimeoutDeath>::new(),
 
             unused_ids: Vec::<IDType>::new(),
             max_id: 0,

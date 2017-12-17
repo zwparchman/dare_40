@@ -74,6 +74,53 @@ pub struct NullStorage {
     mask: BitSet,
 }
 
+pub struct HashStorage<T> {
+    pub data: HashMap<IDType, T>,
+    // pub mask: Vec<bool>,
+    pub mask: BitSet,
+}
+
+impl<T> Storage<T> for HashStorage<T> where T: Clone{
+    fn new() -> Self {
+        Self{
+            data: HashMap::<IDType,T>::new(),
+            //mask: Vec::<bool>::new(),
+            mask: BitSet::new(),
+        }
+    }
+
+    fn add(&mut self, id: IDType, to_add: T) -> Option<T> {
+        let ret = self.data.remove(&id);
+        self.data.insert(id,to_add);
+        self.mask.add(id as u32);
+
+        return ret;
+    }
+
+    fn remove(&mut self, id: IDType) -> Option<T> {
+        self.mask.remove(id as u32);
+        self.data.remove(&id)
+    }
+
+    fn get(&self, id: IDType) -> Option<T> {
+        if ! self.contains(id) {
+            return None;
+        }
+
+        if let Some(val) = self.data.get(&id) {
+            return Some(val.clone());
+        } else {
+            return None;
+        }
+    }
+
+    fn contains(&self, id: IDType) -> bool {
+        self.mask.contains(id as u32)
+    }
+}
+
+
+
 /*
 impl<T> Storage<T> for NullStorage {
     fn new() -> Self {
