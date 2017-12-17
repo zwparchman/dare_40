@@ -30,7 +30,7 @@ pub struct Prefab {
 }
 
 impl Prefab {
-    pub fn spawn(&self, gd: &mut EcsWorld) -> id_type{
+    pub fn spawn(&self, gd: &mut EcsWorld) -> IDType{
         let id = gd.alloc_id();
 
         if let Some(val) = self.drawable.clone() {

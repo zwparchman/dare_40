@@ -3,16 +3,16 @@ use std::collections::HashMap;
 
 use hibitset::BitSet;
 
-use id_type;
+use IDType;
 
 pub trait Storage<T>  where T: Clone {
     fn new() -> Self;
 
-    fn add(&mut self, id: id_type, to_add: T) -> Option<T>;
-    fn remove(&mut self, id: id_type) -> Option<T>;
-    fn get(&self, id: id_type) -> Option<T>;
+    fn add(&mut self, id: IDType, to_add: T) -> Option<T>;
+    fn remove(&mut self, id: IDType) -> Option<T>;
+    fn get(&self, id: IDType) -> Option<T>;
 
-    fn contains(&self, id: id_type) -> bool;
+    fn contains(&self, id: IDType) -> bool;
 }
 
 pub struct VectorStorage<T> {
@@ -30,7 +30,7 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
         }
     }
 
-    fn add(&mut self, id: id_type, to_add: T) -> Option<T> {
+    fn add(&mut self, id: IDType, to_add: T) -> Option<T> {
         if id as usize >= self.data.len() {
             self.data.resize( id as usize + 1, None );
         }
@@ -43,7 +43,7 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
         return ret;
     }
 
-    fn remove(&mut self, id: id_type) -> Option<T> {
+    fn remove(&mut self, id: IDType) -> Option<T> {
         self.mask.remove(id as u32);
         if id as usize >= self.data.len() {
             return None;
@@ -53,7 +53,7 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
         return ret;
     }
 
-    fn get(&self, id: id_type) -> Option<T> {
+    fn get(&self, id: IDType) -> Option<T> {
         if id as usize >= self.data.len() {
             return None;
         }
@@ -64,48 +64,14 @@ impl<T> Storage<T> for VectorStorage<T> where T: Clone{
         }
     }
 
-    fn contains(&self, id: id_type) -> bool {
+    fn contains(&self, id: IDType) -> bool {
         self.mask.contains(id as u32)
     }
 }
 
-    /*
-    virtual std::optional<T> remove(id_type id) override {
-        if((size_t)id >= data.size() ){
-            return std::nullopt;
-        }
-
-        std::optional<T> ret = data[(size_t)id];
-        data[(size_t)id] = std::nullopt;
-        this->mask[id] = false;
-        return ret;
-    }
-
-
-    virtual std::optional<T>& get(id_type id) override {
-        if ((size_t)id >= data.size() ){
-            data.resize((size_t)id+1, std::nullopt);
-            this->mask.resize((size_t)id+1);
-        }
-
-        std::optional<T>& ret = data[(size_t)id];
-        return ret;
-    }
-
-    virtual void clear() override {
-        data.clear();
-        this->mask.clear();
-    }
-
-    virtual size_t size() override {
-        return data.size();
-    }
-}
-*/
-
 #[allow(unused)]
 pub struct NullStorage {
-    mask: Vec<bool>,
+    mask: BitSet,
 }
 
 /*
@@ -116,12 +82,12 @@ impl<T> Storage<T> for NullStorage {
         }
     }
 
-    fn add(&mut self, id: id_type, to_add: T) -> Option<T> {
+    fn add(&mut self, id: IDType, to_add: T) -> Option<T> {
         self.mask[id] = true;
         return None;
     }
 
-    fn remove(&mut self, id: id_type) -> Option<T> {
+    fn remove(&mut self, id: IDType) -> Option<T> {
         if id >= self.data.len() {
             return None;
         }
@@ -133,7 +99,7 @@ impl<T> Storage<T> for NullStorage {
         return None;
     }
 
-    fn get(&self, id: id_type) -> Option<&mut T> {
+    fn get(&self, id: IDType) -> Option<&mut T> {
         if id >= self.data.len() {
             self.data.resize( id + 1 );
             self.mask.resize( id + 1 );
@@ -149,14 +115,14 @@ impl<T> Storage<T> for NullStorage {
 
 
 pub struct HashStorage<T> {
-    data: HashMap<id_type, T>,
+    data: HashMap<IDType, T>,
     mask: Vec<bool>,
 }
 
 impl<T> HashStorage<T> {
     pub fn new() -> Self {
         Self{
-            data: HashMap::<id_type, T>::new(),
+            data: HashMap::<IDType, T>::new(),
             mask: Vec::<bool>::new(),
         }
     }
@@ -173,7 +139,7 @@ impl<T> Storage<T> for HashStorage<T> {
         }
     }
 
-    fn add(&mut self, id: id_type, to_add: T) -> Option<T> {
+    fn add(&mut self, id: IDType, to_add: T) -> Option<T> {
         if id >= self.data.len() {
             self.data.resize( id + 1 );
             self.mask.resize( id + 1 );
@@ -187,7 +153,7 @@ impl<T> Storage<T> for HashStorage<T> {
         return ret;
     }
 
-    fn remove(&mut self, id: id_type) -> Option<T> {
+    fn remove(&mut self, id: IDType) -> Option<T> {
         if id >= self.data.len() {
             return None;
         }
@@ -199,7 +165,7 @@ impl<T> Storage<T> for HashStorage<T> {
         return ret;
     }
 
-    fn get(&mut self, id: id_type) -> &Option<T> {
+    fn get(&mut self, id: IDType) -> &Option<T> {
         if id >= self.data.len() {
             self.data.resize( id + 1 );
             self.mask.resize( id + 1 );
@@ -215,9 +181,9 @@ impl<T> Storage<T> for HashStorage<T> {
 /*
 template<typename T>
 struct HashStorage: public Storage<T>{
-    unordered_map<id_type,std::optional<T>> data;
+    unordered_map<IDType,std::optional<T>> data;
 
-    virtual std::optional<T> add(id_type id, T to_add) override {
+    virtual std::optional<T> add(IDType id, T to_add) override {
         if ((size_t)id >= data.size() ){
             this->mask.resize((size_t)id+1);
         }
@@ -229,7 +195,7 @@ struct HashStorage: public Storage<T>{
         return ret;
     }
 
-    virtual std::optional<T> remove(id_type id) override {
+    virtual std::optional<T> remove(IDType id) override {
         if((size_t)id >= data.size() ){
             return std::nullopt;
         }
@@ -241,7 +207,7 @@ struct HashStorage: public Storage<T>{
     }
 
 
-    virtual std::optional<T>& get(id_type id) override {
+    virtual std::optional<T>& get(IDType id) override {
         if ((size_t)id >= data.size() ){
             this->mask.resize((size_t)id+1);
         }
