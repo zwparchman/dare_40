@@ -12,6 +12,7 @@ use std::clone::Clone;
 
 use std::ptr;
 use std::f32;
+use std;
 
 
 pub use self::raylib_raw::Color;
@@ -19,6 +20,56 @@ pub use self::raylib_raw::Image;
 pub use self::raylib_raw::Texture2D;
 pub use self::raylib_raw::Rectangle;
 pub use self::raylib_raw::Sound;
+
+////////////////////////////////////////////////////////////
+// Audio stuff
+#[derive(Clone)]
+struct AudioStream<T> {
+    raw: raylib_raw::AudioStream,
+    marker: std::marker::PhantomData<T>,
+}
+
+impl<T> AudioStream<T> {
+    #[allow(unused)]
+    pub fn new( sample_rate: u32, channels: u32) -> Self {
+        Self {
+            raw:InitAudioStream(sample_rate,
+                                std::mem::size_of::<T>() as u32,
+                                channels),
+            marker: std::marker::PhantomData::<T>{},
+        }
+    }
+
+    #[allow(unused)]
+    fn update_from_array(&mut self, arr: &[T], count: i32) {
+        UpdateAudioStream( &mut self.raw, arr, count );
+    }
+
+    #[allow(unused)]
+    fn close(self){
+        CloseAudioStream(self.raw);
+    }
+
+    #[allow(unused)]
+    fn is_processed(&self) -> bool {
+        IsAudioBufferProcessed(&self.raw)
+    }
+
+    #[allow(unused)]
+    fn play(&mut self) {
+        PlayAudioStream(&mut self.raw);
+    }
+
+    #[allow(unused)]
+    fn resume(&mut self) {
+        ResumeAudioStream(&mut self.raw);
+    }
+
+    #[allow(unused)]
+    fn stop(&mut self) {
+        StopAudioStream(&mut self.raw);
+    }
+}
 
 ////////////////////////////////////////////////////////////
 // Image stuff
@@ -150,6 +201,85 @@ pub fn BeginDrawing() {
 pub fn ClearBackground(color : Color) {
     unsafe{
         raylib_raw::ClearBackground(color);
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn InitAudioStream( sample_rate: u32, sample_size: u32, channels: u32) -> raylib_raw::AudioStream {
+    unsafe{
+        raylib_raw::InitAudioStream(sample_rate, sample_size, channels)
+    }
+}
+
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn UpdateAudioStream<T>(stream: &mut raylib_raw::AudioStream,
+                            arr: &[T],
+                            num_samples: i32){
+    unsafe {
+        let base = stream as *mut raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        let ptr = arr.as_ptr();
+        raylib_raw::UpdateAudioStream(raw, ptr as *mut ::std::os::raw::c_void, num_samples)
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn CloseAudioStream(stream: raylib_raw::AudioStream) {
+    unsafe {
+        raylib_raw::CloseAudioStream( stream );
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn IsAudioBufferProcessed(stream: &raylib_raw::AudioStream) -> bool {
+    unsafe {
+        let base = stream as *const raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        raylib_raw::IsAudioBufferProcessed(raw) == raylib_raw::bool_::true_
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn PlayAudioStream(stream: &mut raylib_raw::AudioStream) {
+    unsafe {
+        let base = stream as *mut raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        raylib_raw::PlayAudioStream(raw);
+    }
+}
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn PauseAudioStream(stream: &mut raylib_raw::AudioStream){
+    unsafe {
+        let base = stream as *mut raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        raylib_raw::PauseAudioStream(raw);
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn ResumeAudioStream(stream: &mut raylib_raw::AudioStream){
+    unsafe {
+        let base = stream as *mut raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        raylib_raw::ResumeAudioStream(raw);
+    }
+}
+
+#[allow(unused)]
+#[allow(bad_style)]
+pub fn StopAudioStream(stream: &mut raylib_raw::AudioStream){
+    unsafe {
+        let base = stream as *mut raylib_raw::AudioStream;
+        let raw = ptr::read(base);
+        raylib_raw::StopAudioStream(raw);
     }
 }
 
