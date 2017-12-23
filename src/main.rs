@@ -613,8 +613,8 @@ impl EcsWorld {
     fn maintain(&mut self){
         self.to_destroy.sort();
         self.to_destroy.dedup_by(|a, b| { a == b } );
+
         for id in self.to_destroy.clone() {
-            //print!("destroying id {} on frame {}\n", id, self.frame_count);
             self.destroy(id);
         }
         self.to_destroy.clear();
@@ -677,7 +677,7 @@ impl GameData {
 
             if self.spawn_plan.is_empty() {
                 let player_shield_fraction = self.get_player_shield_fraction();
-                self.difficulty += 4.0 * player_shield_fraction;
+                self.difficulty += 3.0 * player_shield_fraction;
                 self.spawn_plan = gen_level(self.difficulty,
                                             500.0,
                                             self.frame_count as u32,

@@ -783,7 +783,7 @@ pub fn gen_level_bomber(difficulty: f32, length: f32, start_frame: u32, mut rng:
 
 pub fn gen_level_bad_upgrade(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
-        Weighted{ weight: 100, item: (gen_enemy_4 as GenThing, 2.0) },
+        Weighted{ weight: 100, item: (gen_enemy_4 as GenThing, 8.0) },
         Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
         Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 30.0) },
         Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 50.0) },
