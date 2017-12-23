@@ -27,6 +27,7 @@ pub struct Prefab {
     pub death_event: Option<DeathEvent>,
     pub stop_at: Option<StopAt>,
     pub timeout_death: Option<TimeoutDeath>,
+    pub boss_health_draw: Option<BossHealthDraw>,
 }
 
 impl Prefab {
@@ -90,6 +91,9 @@ impl Prefab {
         if let Some(val) = self.timeout_death.clone() {
             gd.timeout_death_list.add(id,val);
         }
+        if let Some(val) = self.boss_health_draw.clone() {
+            gd.boss_health_draw_list.add(id,val);
+        }
 
         return id;
     }
@@ -122,6 +126,7 @@ impl PrefabBuilder{
             death_event: None,
             stop_at: None,
             timeout_death: None,
+            boss_health_draw: None, 
         }}
     }
 
@@ -199,6 +204,11 @@ impl PrefabBuilder{
     }
     pub fn timeout_death(mut self, val:TimeoutDeath) -> Self {
         self.thing.timeout_death = Some(val);
+        self
+    }
+
+    pub fn boss_health_draw(mut self, val:BossHealthDraw) -> Self {
+        self.thing.boss_health_draw = Some(val);
         self
     }
 
@@ -807,8 +817,151 @@ pub fn gen_level_simple(difficulty: f32, length: f32, start_frame: u32, mut rng:
     return gen_level_from_weights(difficulty, length, start_frame, &mut rng, &mut weights);
 }
 
-pub fn gen_boss_1_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
-    SpawnPlan::new()
+pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+    print!("boss level!\n");
+    let base_builder = PrefabBuilder::new()
+        .collidable(Collidable{radius: 20.0})
+        .despawn_left(DespawnFarLeft{})
+        .powerup(PowerupBuilder::new()
+                 .sound_by_name("bad-pickup.wav".to_string())
+                 .build())
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("null-powerup.png".to_string())
+                  .build());
+
+    let phy_builder = PhysicalBuilder::new()
+        .xvel(-100.0);
+
+    let mut null_powerup_spawner = Spawner::new();
+    null_powerup_spawner.push(base_builder.clone()
+                 .physical(phy_builder.clone()
+                           .yvel(5.0)
+                           .build())
+                 .build());
+    null_powerup_spawner.push(base_builder.clone()
+                 .physical(phy_builder.clone()
+                           .yvel(0.0)
+                           .build())
+                 .build());
+    null_powerup_spawner.push(base_builder.clone()
+                 .physical(phy_builder.clone()
+                           .yvel(-5.0)
+                           .build())
+                 .build());
+ 
+    let shot_increase_powerup = gen_shot_increase(0.0, 0.0, &mut rng);
+    let mut shot_increase_spawner = Spawner::new();
+    shot_increase_spawner.push(shot_increase_powerup);
+
+    let mut plan = SpawnPlan::new();
+    let mut spawner = Spawner::new();
+    let minion = PrefabBuilder::new()
+        .physical(PhysicalBuilder::new()
+                  .xvel(-0.0)
+                  .build())
+        .team(Team{team:1})
+        .despawn_left(DespawnFarLeft{})
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("boss001_minion.png".to_string())
+                  .build())
+        .timeout_death(TimeoutDeathBuilder::new()
+                       .ticks((FRAME_RATE * 100.0) as i32)
+                       .build())
+        .collidable(Collidable{radius:20.0})
+        .sine_movement(SineMovementBuilder::new()
+                       .amplitude(10.0)
+                       .frequency(1.0)
+                       .build())
+        .sine_movement_x(SineMovementXBuilder::new()
+                         .amplitude(20.0)
+                         .frequency(0.9)
+                         .build())
+        .shield(ShieldBuilder::new()
+                .ammount(30.0)
+                .build())
+        .bullet(Bullet{damage: 50.0})
+        .death_event(DeathEventBuilder::new()
+                     .score_add(10)
+                     .sound_by_name("boss001_minion_death.wav".to_string())
+                     .spawner(Arc::new(null_powerup_spawner))
+                     .build())
+        .weapon(WeaponBuilder::new()
+                .fire_angle(360.0)
+                .fire_rate(3.0 * FRAME_RATE)
+                .fire_velocity(-270.0)
+                .offset(-00.0)
+                .gun_cooldown_frames((FRAME_RATE * 3.0) as i32)
+                .pattern(8)
+                .prefab(PrefabBuilder::new()
+                        .physical(PhysicalBuilder::new().build())
+                        .collidable(Collidable{radius:4.0})
+                        .shield(ShieldBuilder::new()
+                                .ammount(1.0)
+                                .build())
+                        .timeout_death(TimeoutDeathBuilder::new()
+                                       .ticks((FRAME_RATE*10.0) as i32)
+                                       .build())
+                        .bullet(Bullet{damage:8.0})
+                        .despawn_left(DespawnFarLeft{})
+                        .despawn_right(DespawnFarRight{})
+                        .team(Team{team:1})
+                        .drawable(DrawableBuilder::new()
+                                  .layer(1.0)
+                                  .texture_by_name("red_ball.png".to_string())
+                                  .build())
+                        .build())
+                .build())
+        .auto_fire(AutoFire{})
+        .build();
+    let boss = PrefabBuilder::new()
+        .auto_fire(AutoFire{})
+        .drawable(DrawableBuilder::new()
+                  .layer(1.0)
+                  .texture_by_name("boss001.png".to_string())
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(1400.0)
+                  .y(400.0)
+                  .xvel(-100.0)
+                  .build())
+        .stop_at( StopAtBuilder::new()
+                  .xloc(1000.0)
+                  .build())
+        .sine_movement(SineMovementBuilder::new()
+                       .amplitude(200.0)
+                       .frequency(0.2)
+                       .build())
+        .sine_movement_x(SineMovementXBuilder::new()
+                       .amplitude(100.0)
+                       .frequency(0.05)
+                       .build())
+        .team(Team{team:1})
+        .death_event(DeathEventBuilder::new()
+                     .score_add(1000)
+                     .spawner(Arc::new(shot_increase_spawner))
+                     .clear_spawn_plan(true)
+                     .build())
+        .weapon( WeaponBuilder::new()
+                 .fire_rate(6.0*FRAME_RATE)
+                 .fire_angle(120.0)
+                 .fire_velocity(-60.0)
+                 .gun_cooldown_frames((FRAME_RATE*4.0) as i32)
+                 .fire_sound("boss001_shot.wav".to_string())
+                 .prefab(minion.clone())
+                 .pattern(3)
+                 .offset(-0.0)
+                 .build())
+        .collidable(Collidable{radius: 60.0})
+        .boss_health_draw(BossHealthDrawBuilder::new().build())
+        .shield(ShieldBuilder::new()
+                .ammount(500.0 + 10.0 * difficulty as f32)
+                .build())
+        .build();
+
+    spawner.push(boss);
+    plan.add(start_frame as u64 + 1, spawner);
+    plan.add(start_frame as u64 + 1000000000, Spawner::new());
+    return plan;
 }
 
 pub fn gen_level_normal(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
@@ -832,6 +985,7 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut r
     }
 
     let mut weights = vec![
+        // Weighted{ weight: 9999, item: gen_boss_1_level as GenLevel },
         Weighted{ weight: 1, item: gen_level_bomber as GenLevel },
         Weighted{ weight: 1, item: gen_level_bad_upgrade as GenLevel },
         Weighted{ weight: 2, item: gen_level_simple as GenLevel },

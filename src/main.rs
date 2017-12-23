@@ -233,13 +233,14 @@ pub struct DeathEvent{
     sound: Arc<Sound>,
     spawner: Arc<Spawner>,
     score_add: i64,
+    clear_spawn_plan: bool,
 }
 
 impl DeathEvent{
-    fn die(&self, mut world: &mut EcsWorld, pos: &Physical) -> i64 {
+    fn die(&self, mut world: &mut EcsWorld, pos: &Physical) -> ( bool, i64) {
         PlaySound(&self.sound);
         self.spawner.spawn_at_pos(&mut world, &pos);
-        self.score_add
+        (self.clear_spawn_plan, self.score_add)
     }
 }
 
@@ -253,6 +254,7 @@ impl DeathEventBuilder {
             sound: load_sound("scilence.wav".to_string()).unwrap(),
             spawner: Arc::new(Spawner::new()),
             score_add: 0,
+            clear_spawn_plan: false,
         }}
     }
     fn spawner(mut self, val: Arc<Spawner>) -> Self {
@@ -266,6 +268,11 @@ impl DeathEventBuilder {
 
     fn score_add(mut self, val: i64) -> Self {
         self.thing.score_add = val;
+        self
+    }
+
+    fn clear_spawn_plan(mut self, val: bool) -> Self {
+        self.thing.clear_spawn_plan = val;
         self
     }
 
@@ -449,6 +456,26 @@ impl WeaponBuilder {
 }
 
 #[derive(Clone)]
+pub struct BossHealthDraw {
+}
+
+pub struct BossHealthDrawBuilder {
+    thing: BossHealthDraw,
+}
+
+impl BossHealthDrawBuilder {
+    fn new() -> Self {
+        Self {
+            thing: BossHealthDraw{},
+        }
+    }
+
+    fn build(self) -> BossHealthDraw {
+        self.thing
+    }
+}
+
+#[derive(Clone)]
 pub struct TimeoutDeath{
     ticks: i32,
 }
@@ -545,6 +572,7 @@ pub struct EcsWorld {
     death_event_list: HashStorage<DeathEvent>,
     stop_at_list: HashStorage<StopAt>,
     timeout_death_list: HashStorage<TimeoutDeath>,
+    boss_health_draw_list: HashStorage<BossHealthDraw>,
 
     unused_ids: Vec<IDType>,
     max_id: IDType,
@@ -574,6 +602,7 @@ impl EcsWorld {
             death_event_list: HashStorage::<DeathEvent>::new(),
             stop_at_list: HashStorage::<StopAt>::new(),
             timeout_death_list: HashStorage::<TimeoutDeath>::new(),
+            boss_health_draw_list: HashStorage::<BossHealthDraw>::new(),
 
             unused_ids: Vec::<IDType>::new(),
             max_id: 0,
@@ -606,6 +635,7 @@ impl EcsWorld {
         self.death_event_list.remove(id);
         self.stop_at_list.remove(id);
         self.timeout_death_list.remove(id);
+        self.boss_health_draw_list.remove(id);
 
         self.free_id(id);
     }
@@ -650,6 +680,7 @@ pub struct GameData{
 
     world: EcsWorld,
     difficulty: f32,
+    wave: i32,
     score: i64,
 
     rng: rand::isaac::Isaac64Rng,
@@ -665,6 +696,7 @@ impl GameData {
             world: EcsWorld::new(),
             difficulty: 50.0,
             score: 0,
+            wave: 0,
             // rng: rand::isaac::Isaac64Rng::from_seed(&[1,2,3]),
             rng: rand::isaac::Isaac64Rng::from_seed(&[rand::thread_rng().gen::<u64>()]),
         }
@@ -678,10 +710,19 @@ impl GameData {
             if self.spawn_plan.is_empty() {
                 let player_shield_fraction = self.get_player_shield_fraction();
                 self.difficulty += 3.0 * player_shield_fraction;
-                self.spawn_plan = gen_level(self.difficulty,
-                                            500.0,
-                                            self.frame_count as u32,
-                                            &mut self.rng);
+                self.wave += 1;
+                if self.wave == 20 {
+                    self.difficulty *= 1.5;
+                    self.spawn_plan = gen_boss_1_level(self.difficulty,
+                                                       500.0,
+                                                       self.frame_count as u32,
+                                                       &mut self.rng);
+                } else {
+                    self.spawn_plan = gen_level(self.difficulty,
+                                                500.0,
+                                                self.frame_count as u32,
+                                                &mut self.rng);
+                }
             }
 
             if let Some(lst) = olst {
@@ -723,7 +764,9 @@ impl GameData {
     }
 
     fn do_weapon_fire(&mut self) {
-        let mask = self.world.weapon_list.mask.clone() & self.world.auto_fire_list.mask.clone() & self.world.physical_list.mask.clone();
+        let mask = self.world.weapon_list.mask.clone() &
+                   self.world.auto_fire_list.mask.clone() &
+                   self.world.physical_list.mask.clone();
 
         for id in mask {
             let fire = {
@@ -827,6 +870,21 @@ impl GameData {
             let text = format!("Score: {}", self.score);
             DrawText(text.as_str(), 100,20,20, white);
         }
+
+        //draw boss health
+        for id in self.world.boss_health_draw_list.mask.clone() & self.world.shield_list.mask.clone(){
+            let boss_shield = self.world.shield_list.get(id as IDType).unwrap();
+            let boss_shield_fraction = boss_shield.ammount / boss_shield.max_shield;
+            DrawRectangle(300,
+                          30,
+                          (boss_shield_fraction * 400.0) as i32,
+                          30,
+                          Color{r:255, g:0, b:0, a: 255});
+            DrawRectangleLines(300,
+                               30,
+                               400,
+                               30, Color{r:255, g:0, b:0, a: 255});
+        }
     }
 
     fn get_player_cargo(&mut self) -> Vec<Prefab> {
@@ -849,15 +907,18 @@ impl GameData {
         return 0.0;
     }
 
-
+    fn get_shield_fraction_by_id(&self, id: IDType) -> f32 {
+        if let Some(shield) = self.world.shield_list.get(id) {
+            return shield.ammount / shield.max_shield;
+        }
+        return 1.0;
+    }
 
     fn get_player_shield_fraction(&self) -> f32{
         let mask = self.world.controllable_list.mask.clone();
 
         for id in mask {
-            if let Some(shield) = self.world.shield_list.get(id as IDType) {
-                return shield.ammount / shield.max_shield;
-            }
+            return self.get_shield_fraction_by_id(id as IDType);
         }
         return 1.0;
     }
@@ -975,7 +1036,11 @@ impl GameData {
             if shield.ammount < 0.0 {
                 if let Some(death_event) = self.world.death_event_list.get(id as IDType) {
 
-                    self.score += death_event.die(&mut self.world, &pos);
+                    let death_val = death_event.die(&mut self.world, &pos);
+                    self.score += death_val.1;
+                    if death_val.0 {
+                        self.spawn_plan.clear();
+                    }
                 }
                 self.world.destroy_later(id as IDType);
             }
@@ -994,7 +1059,12 @@ impl GameData {
 
                 if let Some(death_event) = self.world.death_event_list.get(id as IDType) {
 
-                    self.score += death_event.die(&mut self.world, &pos);
+                    let death_val = death_event.die(&mut self.world, &pos);
+                    self.score += death_val.1;
+
+                    if death_val.0 {
+                        self.spawn_plan.clear();
+                    }
                 }
 
                 self.world.destroy_later(id as IDType);
