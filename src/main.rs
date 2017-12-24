@@ -201,6 +201,7 @@ impl PhysicalBuilder{
 pub struct Drawable{
     texture: Arc<Texture2D>,
     layer: f32,
+    tint: Color,
 }
 
 struct DrawableBuilder{
@@ -212,6 +213,7 @@ impl DrawableBuilder {
         DrawableBuilder{ thing: Drawable{
             texture: load_texture("no-texture.png".to_string()).unwrap(),
             layer: 0.1,
+            tint: Color{r:255, g: 255, b:255, a:255},
         }}
     }
     fn layer(mut self, val: f32) -> Self{
@@ -220,6 +222,11 @@ impl DrawableBuilder {
     }
     fn texture_by_name(mut self, val: String) -> Self{
         self.thing.texture = load_texture(val).unwrap();
+        self
+    }
+
+    fn tint(mut self, val: Color) -> Self{
+        self.thing.tint = val;
         self
     }
 
@@ -677,6 +684,7 @@ pub struct GameData{
     frame_count: u64,
 
     spawn_plan: SpawnPlan,
+    star_spawner: SpawnPlan,
 
     world: EcsWorld,
     difficulty: f32,
@@ -693,6 +701,7 @@ impl GameData {
         Self{
             frame_count: 0,
             spawn_plan: SpawnPlan::new(),
+            star_spawner: SpawnPlan::new(),
             world: EcsWorld::new(),
             difficulty: 50.0,
             score: 0,
@@ -702,35 +711,49 @@ impl GameData {
         }
     }
 
-    fn step(&mut self){
-        {
-            let olst;
-            olst = self.spawn_plan.remove(&self.frame_count);
-
-            if self.spawn_plan.is_empty() {
-                let player_shield_fraction = self.get_player_shield_fraction();
-                self.difficulty += 3.0 * player_shield_fraction;
-                self.wave += 1;
-                if self.wave == 20 {
-                    self.difficulty *= 1.5;
-                    self.spawn_plan = gen_boss_1_level(self.difficulty,
-                                                       500.0,
-                                                       self.frame_count as u32,
-                                                       &mut self.rng);
-                } else {
-                    self.spawn_plan = gen_level(self.difficulty,
-                                                500.0,
-                                                self.frame_count as u32,
-                                                &mut self.rng);
-                }
-            }
-
-            if let Some(lst) = olst {
-                for spawner in lst {
-                    spawner.spawn(&mut self.world);
-                }
+    fn spawn_stats(&mut self){
+        if let Some(lst) = self.star_spawner.remove(&self.frame_count) {
+            for spawner in lst {
+                spawner.spawn(&mut self.world);
             }
         }
+        if self.star_spawner.is_empty() {
+            self.star_spawner = gen_star_spawner(self.frame_count as u32, &mut self.rng);
+        }
+    }
+
+    fn spawn_main(&mut self){
+        let olst;
+        olst = self.spawn_plan.remove(&self.frame_count);
+
+        if self.spawn_plan.is_empty() {
+            let player_shield_fraction = self.get_player_shield_fraction();
+            self.difficulty += 3.0 * player_shield_fraction;
+            self.wave += 1;
+            if self.wave == 20 {
+                self.difficulty *= 1.5;
+                self.spawn_plan = gen_boss_1_level(self.difficulty,
+                                                   500.0,
+                                                   self.frame_count as u32,
+                                                   &mut self.rng);
+            } else {
+                self.spawn_plan = gen_level(self.difficulty,
+                                            500.0,
+                                            self.frame_count as u32,
+                                            &mut self.rng);
+            }
+        }
+
+        if let Some(lst) = olst {
+            for spawner in lst {
+                spawner.spawn(&mut self.world);
+            }
+        }
+    }
+
+    fn step(&mut self){
+        self.spawn_stats();
+        self.spawn_main();
 
         self.do_player_input();
         self.do_sine_movement();
@@ -831,7 +854,7 @@ impl GameData {
                             dst_rect,
                             Vector2::new(0.0, 0.0),
                             0.0,
-                            Color{r:255, g:255, b:255, a:255});
+                            drw.tint.clone());
     }
 
     fn draw(&mut self){

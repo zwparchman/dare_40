@@ -1036,4 +1036,41 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u32, mut rng: 
     }
     return ret;
 }
-// */
+
+pub fn gen_star_spawner(start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+    let fun = |dist: f32, rng: &mut rand::isaac::Isaac64Rng| {
+        let color_base = 1.0 - 1.0 * (dist * dist);
+        let color_byte = (color_base * 255.0) as u8;
+        PrefabBuilder::new()
+            .drawable(DrawableBuilder::new()
+                      .layer(0.0)
+                      .texture_by_name("background_star.png".to_string())
+                      .tint(Color{r:color_byte, g: color_byte, b: color_byte, a: color_byte})
+                      .build())
+            .despawn_left(DespawnFarLeft{})
+            .physical(PhysicalBuilder::new()
+                      .x(1300.0)
+                      .y(rng.gen_range::<f32>(0.0,750.0))
+                      .xvel(-250.0 * (color_base * color_base))
+                      .build())
+            .build()
+    };
+    let density = 20;
+
+    let mut to_spawn = 1000;
+    let mut cur_frame = start_frame;
+
+    let mut ret = SpawnPlan::new();
+
+    while to_spawn != 0 {
+        let step = rng.gen_range(0,density);
+        cur_frame += step;
+        to_spawn -= 1;
+
+        let mut spawner = Spawner::new();
+        spawner.push(fun(rng.gen_range(0.0, 1.0), &mut rng));
+
+        ret.add(cur_frame as u64, spawner);
+    }
+    return ret;
+}
