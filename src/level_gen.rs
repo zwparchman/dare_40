@@ -744,12 +744,12 @@ fn gen_random_upgrade(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> 
 }
 
 type GenThing = fn (x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab;
-type GenLevel = fn (difficulty: f32, length: f32, start_frame: u32, rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan;
+type GenLevel = fn (difficulty: f32, length: f32, start_frame: u64, rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan;
 
 
 pub fn gen_level_from_weights(difficulty: f32,
                               length: f32,
-                              start_frame: u32,
+                              start_frame: u64,
                               mut rng: &mut rand::isaac::Isaac64Rng,
                               mut weights: &mut Vec<Weighted<(GenThing,f32)>>) 
                 -> SpawnPlan {
@@ -768,9 +768,10 @@ pub fn gen_level_from_weights(difficulty: f32,
         }
 
         let offset = rng.gen_range(0.0, 500.0);
-        let when: u64 = start_frame as u64 + len_left as u64;
+        let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);
+        trace!("adding spawner for frame {}", when);
         ret.add( when, spawner );
         len_left -= offset;
     }
@@ -778,7 +779,7 @@ pub fn gen_level_from_weights(difficulty: f32,
 }
 
 
-pub fn gen_level_bomber(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_level_bomber(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
         Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },
         Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
@@ -791,7 +792,7 @@ pub fn gen_level_bomber(difficulty: f32, length: f32, start_frame: u32, mut rng:
     return gen_level_from_weights(difficulty, length, start_frame, &mut rng, &mut weights);
 }
 
-pub fn gen_level_bad_upgrade(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_level_bad_upgrade(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
         Weighted{ weight: 100, item: (gen_enemy_4 as GenThing, 8.0) },
         Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
@@ -804,7 +805,7 @@ pub fn gen_level_bad_upgrade(difficulty: f32, length: f32, start_frame: u32, mut
     return gen_level_from_weights(difficulty, length, start_frame, &mut rng, &mut weights);
 }
 
-pub fn gen_level_simple(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_level_simple(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
         Weighted{ weight: 10, item: (gen_enemy_1 as GenThing, 10.0)},
         Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 30.0) },
@@ -817,7 +818,7 @@ pub fn gen_level_simple(difficulty: f32, length: f32, start_frame: u32, mut rng:
     return gen_level_from_weights(difficulty, length, start_frame, &mut rng, &mut weights);
 }
 
-pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     print!("boss level!\n");
     let base_builder = PrefabBuilder::new()
         .collidable(Collidable{radius: 20.0})
@@ -959,12 +960,12 @@ pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u32, mut rng
         .build();
 
     spawner.push(boss);
-    plan.add(start_frame as u64 + 1, spawner);
-    plan.add(start_frame as u64 + 1000000000, Spawner::new());
+    plan.add(start_frame + 1, spawner);
+    plan.add(start_frame + 1000000000, Spawner::new());
     return plan;
 }
 
-pub fn gen_level_normal(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_level_normal(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
         Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },
         Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
@@ -979,7 +980,7 @@ pub fn gen_level_normal(difficulty: f32, length: f32, start_frame: u32, mut rng:
 
 
 
-pub fn gen_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     if start_frame == 0 {
         return gen_first_level(difficulty, length, start_frame, &mut rng);
     }
@@ -997,7 +998,7 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut r
     return chooser.ind_sample(&mut rng)(difficulty, length, start_frame, &mut rng);
 }
 
-pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut ret = SpawnPlan::new();
 
     let mut spawner = Spawner::new();
@@ -1007,11 +1008,11 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u32, mut rng: 
     }
 
     let mut weights = vec![ 
-        Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },
-        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
-        Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 30.0) },
-        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 50.0) },
-        Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 20.0) },
+        Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 10.0) },
+        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 20.0)},
+        Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 40.0) },
+        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 60.0) },
+        Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 30.0) },
         Weighted{ weight: 2, item: (gen_random_upgrade as GenThing, 1.0) },
     ]; 
 
@@ -1028,7 +1029,7 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u32, mut rng: 
         }
 
         let offset = rng.gen_range(0.0, 500.0);
-        let when: u64 = start_frame as u64 + len_left as u64;
+        let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);
         ret.add(when, spawner);
@@ -1037,7 +1038,7 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u32, mut rng: 
     return ret;
 }
 
-pub fn gen_star_spawner(start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_star_spawner(start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let fun = |dist: f32, rng: &mut rand::isaac::Isaac64Rng| {
         let color_base = 1.0 - 1.0 * (dist * dist);
         let color_byte = (color_base * 255.0) as u8;
@@ -1062,15 +1063,24 @@ pub fn gen_star_spawner(start_frame: u32, mut rng: &mut rand::isaac::Isaac64Rng)
 
     let mut ret = SpawnPlan::new();
 
-    while to_spawn != 0 {
+    while to_spawn != 0 || to_spawn > 1000 {
         let step = rng.gen_range(0,density);
         cur_frame += step;
         to_spawn -= 1;
 
         let mut spawner = Spawner::new();
-        spawner.push(fun(rng.gen_range(0.0, 1.0), &mut rng));
-
-        ret.add(cur_frame as u64, spawner);
+        if start_frame == 0 {
+            to_spawn -= 3;
+            let mut star = fun(rng.gen_range(0.0, 1.0), &mut rng);
+            if let Some(ref mut phy) = star.physical {
+                phy.x = rng.gen_range(0.0, 1300.0);
+            }
+            spawner.push(star);
+            ret.add(1, spawner);
+        } else {
+            spawner.push(fun(rng.gen_range(0.0, 1.0), &mut rng));
+            ret.add(cur_frame as u64, spawner);
+        }
     }
     return ret;
 }

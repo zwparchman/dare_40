@@ -1,3 +1,4 @@
+#[macro_use] extern crate log;
 #[macro_use] extern crate cached;
 // `cached!` macro requires the `lazy_static!` macro
 #[macro_use] extern crate lazy_static;
@@ -7,6 +8,7 @@ extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
 extern crate hibitset;
+extern crate pretty_env_logger;
 
 use std::f32;
 
@@ -711,14 +713,14 @@ impl GameData {
         }
     }
 
-    fn spawn_stats(&mut self){
+    fn spawn_stars(&mut self){
         if let Some(lst) = self.star_spawner.remove(&self.frame_count) {
             for spawner in lst {
                 spawner.spawn(&mut self.world);
             }
         }
         if self.star_spawner.is_empty() {
-            self.star_spawner = gen_star_spawner(self.frame_count as u32, &mut self.rng);
+            self.star_spawner = gen_star_spawner(self.frame_count , &mut self.rng);
         }
     }
 
@@ -727,24 +729,26 @@ impl GameData {
         olst = self.spawn_plan.remove(&self.frame_count);
 
         if self.spawn_plan.is_empty() {
+            trace!("Creating new main spawn plan on frame:{} difficulty: {} wave: {}", self.frame_count, self.difficulty, self.wave);
             let player_shield_fraction = self.get_player_shield_fraction();
             self.difficulty += 3.0 * player_shield_fraction;
             self.wave += 1;
             if self.wave == 20 {
-                self.difficulty *= 1.5;
+                self.difficulty += 20.0;
                 self.spawn_plan = gen_boss_1_level(self.difficulty,
                                                    500.0,
-                                                   self.frame_count as u32,
+                                                   self.frame_count ,
                                                    &mut self.rng);
             } else {
                 self.spawn_plan = gen_level(self.difficulty,
                                             500.0,
-                                            self.frame_count as u32,
+                                            self.frame_count ,
                                             &mut self.rng);
             }
         }
 
         if let Some(lst) = olst {
+            trace!("Executing spawn on frame {}", self.frame_count);
             for spawner in lst {
                 spawner.spawn(&mut self.world);
             }
@@ -752,7 +756,7 @@ impl GameData {
     }
 
     fn step(&mut self){
-        self.spawn_stats();
+        self.spawn_stars();
         self.spawn_main();
 
         self.do_player_input();
@@ -1395,6 +1399,7 @@ fn get_shot_angles(angle: f32, count: i32) -> Vec<f32> {
 }
 
 fn main(){
+    pretty_env_logger::init().unwrap();
     {
         //raylib configuration flags
         #[allow(unused_mut)]
