@@ -700,6 +700,8 @@ impl GameData {
     fn new() -> Self {
         use rand::Rng;
         use rand::SeedableRng;
+        let seed = rand::thread_rng().gen::<u64>();
+        debug!("Seed {}", seed);
         Self{
             frame_count: 0,
             spawn_plan: SpawnPlan::new(),
@@ -709,7 +711,7 @@ impl GameData {
             score: 0,
             wave: 0,
             // rng: rand::isaac::Isaac64Rng::from_seed(&[1,2,3]),
-            rng: rand::isaac::Isaac64Rng::from_seed(&[rand::thread_rng().gen::<u64>()]),
+            rng: rand::isaac::Isaac64Rng::from_seed(&[seed]),
         }
     }
 
