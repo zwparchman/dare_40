@@ -692,6 +692,7 @@ pub struct GameData{
     difficulty: f32,
     wave: i32,
     score: i64,
+    paused: bool,
 
     rng: rand::isaac::Isaac64Rng,
 }
@@ -712,23 +713,22 @@ impl GameData {
             wave: 0,
             // rng: rand::isaac::Isaac64Rng::from_seed(&[1,2,3]),
             rng: rand::isaac::Isaac64Rng::from_seed(&[seed]),
+            paused: false,
         }
     }
 
     fn spawn_stars(&mut self){
-        if let Some(lst) = self.star_spawner.remove(&self.frame_count) {
-            for spawner in lst {
-                spawner.spawn(&mut self.world);
-            }
-        }
+        self.star_spawner.execute(self.frame_count, &mut self.world);
         if self.star_spawner.is_empty() {
             self.star_spawner = gen_star_spawner(self.frame_count , &mut self.rng);
         }
     }
 
     fn spawn_main(&mut self){
-        let olst;
-        olst = self.spawn_plan.remove(&self.frame_count);
+        let did_spawn = self.spawn_plan.execute(self.frame_count, &mut self.world);
+        if did_spawn {
+            trace!("Spawned main on  frame {}", self.frame_count);
+        }
 
         if self.spawn_plan.is_empty() {
             trace!("Creating new main spawn plan on frame:{} difficulty: {} wave: {}", self.frame_count, self.difficulty, self.wave);
@@ -748,35 +748,34 @@ impl GameData {
                                             &mut self.rng);
             }
         }
-
-        if let Some(lst) = olst {
-            trace!("Executing spawn on frame {}", self.frame_count);
-            for spawner in lst {
-                spawner.spawn(&mut self.world);
-            }
-        }
     }
 
     fn step(&mut self){
         self.spawn_stars();
         self.spawn_main();
 
-        self.do_player_input();
-        self.do_sine_movement();
-        self.do_sine_movement_x();
-        self.do_install();
-        self.do_stop_at();
-        self.do_movement();
-        self.do_despawn();
-        self.do_collision();
-        self.do_timeout_death();
-        self.do_death_check();
-        self.do_shield_regen();
-        self.do_weapon_cooldown();
-        self.do_weapon_fire();
+        if IsKeyPressed(KEY_P) {
+            self.paused = ! self.paused;
+        }
 
-        self.world.maintain();
-        self.frame_count+=1;
+        if ! self.paused {
+            self.do_player_input();
+            self.do_sine_movement();
+            self.do_sine_movement_x();
+            self.do_install();
+            self.do_stop_at();
+            self.do_movement();
+            self.do_despawn();
+            self.do_collision();
+            self.do_timeout_death();
+            self.do_death_check();
+            self.do_shield_regen();
+            self.do_weapon_cooldown();
+            self.do_weapon_fire();
+
+            self.world.maintain();
+            self.frame_count+=1;
+        }
     }
 
 

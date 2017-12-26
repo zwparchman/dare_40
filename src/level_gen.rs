@@ -286,6 +286,20 @@ impl SpawnPlan {
             self.insert( key, vec![val]);
         }
     }
+
+    pub fn execute(&mut self, frame: u64, mut world: &mut EcsWorld) -> bool {
+        let did_spawn;
+        if let Some(lst) = self.remove(&frame) {
+            for spawner in lst {
+                spawner.spawn(&mut world);
+            }
+            did_spawn = true;
+        } else {
+            did_spawn = false;
+        }
+
+        return did_spawn;
+    }
 }
 
 fn gen_player() -> Prefab{
