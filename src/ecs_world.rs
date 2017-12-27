@@ -159,4 +159,5 @@ declare_ecs_world_full!(
     (timeout_death, timeout_death_list, TimeoutDeath, HashStorage<TimeoutDeath>),
     (boss_health_draw, boss_health_draw_list, BossHealthDraw, HashStorage<BossHealthDraw>),
     (despawn_y, despawn_y_list, DespawnY, HashStorage<DespawnY>),
+    (follow_player_y, follow_player_y_list, FollowPlayerY, HashStorage<FollowPlayerY>),
 );

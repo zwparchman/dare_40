@@ -309,6 +309,33 @@ pub struct DespawnFarLeft{}
 #[derive(Clone)]
 pub struct DespawnY{}
 
+#[derive(Clone)]
+pub struct FollowPlayerY{
+    speed: f32,
+}
+
+#[derive(Clone)]
+pub struct FollowPlayerYBuilder {
+    thing: FollowPlayerY,
+}
+
+impl FollowPlayerYBuilder {
+    fn new() -> Self {
+        Self{thing:FollowPlayerY{
+            speed: 0.0,
+        }}
+    }
+
+    fn speed(mut self, val: f32) -> Self {
+        self.thing.speed = val;
+        self
+    }
+
+    fn build(self) -> FollowPlayerY {
+        self.thing
+    }
+}
+
 
 
 #[derive(Clone)]
@@ -652,6 +679,7 @@ impl GameData {
             self.do_stop_at();
             self.do_movement();
             self.do_despawn();
+            self.do_follow_player();
             self.do_collision();
             self.do_timeout_death();
             self.do_death_check();
@@ -661,6 +689,39 @@ impl GameData {
 
             self.world.maintain();
             self.frame_count+=1;
+        }
+    }
+
+    fn get_player_id(&self) -> Option<IDType> {
+        let mask = self.world.controllable_list.mask.clone();
+        for id in mask {
+            return Some(id as IDType);
+        }
+        None
+    }
+
+    fn do_follow_player(&mut self){
+        let mask = self.world.follow_player_y_list.mask.clone() &
+                   self.world.physical_list.mask.clone();
+
+        let player_id_opt = self.get_player_id();
+        if player_id_opt.is_none() { return }
+        let player_id = player_id_opt.unwrap();
+
+        let player_phy = self.world.physical_list.get(player_id as IDType).unwrap();
+
+        for id in mask {
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+            let fol = self.world.follow_player_y_list.get(id as IDType).unwrap();
+
+            let diff = player_phy.y - phy.y;
+            let to_move = diff.abs();
+            let dir = { if diff > 0.0 { 1.0 } else { -1.0 } };
+            let will_move = min_float(to_move, fol.speed * FRAME_TIME);
+
+            phy.y += will_move * dir;
+
+            self.world.physical_list.add(id as IDType, phy);
         }
     }
 
