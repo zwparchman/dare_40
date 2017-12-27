@@ -258,7 +258,7 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .frequency(rng.gen_range(0.5, 2.0))
                         .build())
         .weapon( WeaponBuilder::new()
-                 .fire_rate(rng.gen_range(0.7, 1.0))
+                 .fire_rate(rng.gen_range(1.7, 2.0))
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
                            .despawn_far_left(DespawnFarLeft{})
@@ -568,7 +568,7 @@ pub fn gen_level_from_weights(difficulty: f32,
             spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
 
-        let offset = rng.gen_range(0.0, 500.0 * FRAME_RATE);
+        let offset = rng.gen_range(0.0, 5.0 * FRAME_RATE);
         let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);
