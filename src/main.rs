@@ -1071,14 +1071,14 @@ impl GameData {
     }
 
     fn do_despawn(&mut self){
-        let mask = (self.world.despawn_left.mask.clone() | self.world.despawn_right.mask.clone()) & self.world.physical_list.mask.clone();
+        let mask = (self.world.despawn_far_left.mask.clone() | self.world.despawn_far_right.mask.clone()) & self.world.physical_list.mask.clone();
 
         for id in mask {
             let phy = self.world.physical_list.get(id as IDType).unwrap();
-            if self.world.despawn_left.contains(id as IDType) && phy.x < -80.0 {
+            if self.world.despawn_far_left.contains(id as IDType) && phy.x < -80.0 {
                 self.world.destroy_later(id as IDType);
             } 
-            if self.world.despawn_right.contains(id as IDType) && phy.x > GetScreenWidth() as f32 + 120.0 {
+            if self.world.despawn_far_right.contains(id as IDType) && phy.x > GetScreenWidth() as f32 + 120.0 {
                 self.world.destroy_later(id as IDType);
             }
         }
@@ -1207,66 +1207,7 @@ impl GameData {
     }
 
     fn id_to_prefab(&mut self, id: IDType) -> Prefab {
-        let mut ret = PrefabBuilder::new();
-        if let Some(val) = self.world.drawable_list.get(id) {
-            ret = ret.drawable(val);
-        }
-        if let Some(val) = self.world.physical_list.get(id) {
-            ret = ret.physical(val);
-        }
-        if let Some(val) = self.world.collidable_list.get(id) {
-            ret = ret.collidable(val);
-        }
-        if let Some(val) = self.world.controllable_list.get(id) {
-            ret = ret.controllable(val);
-        }
-        if let Some(val) = self.world.bullet_list.get(id) {
-            ret = ret.bullet(val);
-        }
-        if let Some(val) = self.world.shield_list.get(id) {
-            ret = ret.shield(val);
-        }
-        if let Some(val) = self.world.despawn_left.get(id) {
-            ret = ret.despawn_left(val);
-        }
-        if let Some(val) = self.world.despawn_right.get(id) {
-            ret = ret.despawn_right(val);
-        }
-        if let Some(val) = self.world.powerup_list.get(id) {
-            ret = ret.powerup(val);
-        }
-        if let Some(val) = self.world.player_stats_list.get(id) {
-            ret = ret.player_stats(val);
-        }
-        if let Some(val) = self.world.weapon_list.get(id) {
-            ret = ret.weapon(val);
-        }
-        if let Some(val) = self.world.auto_fire_list.get(id) {
-            ret = ret.auto_fire(val);
-        }
-        if let Some(val) = self.world.sine_movement_list.get(id) {
-            ret = ret.sine_movement(val);
-        }
-        if let Some(val) = self.world.sine_movement_x_list.get(id) {
-            ret = ret.sine_movement_x(val);
-        }
-        if let Some(val) = self.world.team_list.get(id) {
-            ret = ret.team(val);
-        }
-        if let Some(val) = self.world.install_list.get(id) {
-            ret = ret.install(val);
-        }
-        if let Some(val) = self.world.death_event_list.get(id) {
-            ret = ret.death_event(val);
-        }
-        if let Some(val) = self.world.stop_at_list.get(id) {
-            ret = ret.stop_at(val);
-        }
-        if let Some(val) = self.world.timeout_death_list.get(id) {
-            ret = ret.timeout_death(val);
-        }
-
-        return ret.build();
+        self.world.id_to_prefab(id)
     }
 
 }
