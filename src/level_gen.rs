@@ -950,39 +950,27 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: 
     let mut ret = SpawnPlan::new();
 
     let mut spawner = Spawner::new();
-    spawner.prefabs.push(gen_player());
+    spawner.push(gen_player());
     if start_frame == 0 {
         ret.insert(0, vec![spawner.clone()]);
     }
 
-    let mut weights = vec![ 
-        Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 10.0) },
-        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 20.0)},
-        Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 40.0) },
-        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 90.0) },
-        Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 30.0) },
-        Weighted{ weight: 2, item: (gen_random_upgrade as GenThing, 1.0) },
-    ]; 
+    spawner = Spawner::new();
+    spawner.push(gen_random_upgrade(1350.0, 400.0, &mut rng));
 
-    let chooser = WeightedChoice::new(&mut weights);
+    ret.add( 1, spawner);
 
-    let mut len_left = length - rng.gen_range(0.0, 3.0 * FRAME_RATE);
-    while len_left > 0.0 {
+
+    for i in 0..3 {
         spawner = Spawner::new();
-        let mut cur_diff = difficulty;
-        while cur_diff > 0.0 {
-            let (fun,dif) = chooser.ind_sample(&mut rng);
-            cur_diff -= dif;
-            spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
+        for _ in 0..20 {
+            spawner.push(
+                gen_enemy_4( rng.gen_range(1350.0, 1450.0), rng.gen_range(0.0, 750.0), &mut rng));
         }
-
-        let offset = rng.gen_range(0.0, 2.0 * FRAME_RATE);
-        let when: u64 = start_frame + len_left as u64;
-
-        // print!("when {}\n", when);
-        ret.add(when, spawner);
-        len_left -= offset;
+        ret.add((0.75*FRAME_RATE * i as f32) as u64,  spawner);
     }
+
+
     return ret;
 }
 
