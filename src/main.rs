@@ -306,6 +306,10 @@ pub struct PlayerControl{}
 pub struct DespawnFarRight{}
 #[derive(Clone)]
 pub struct DespawnFarLeft{}
+#[derive(Clone)]
+pub struct DespawnY{}
+
+
 
 #[derive(Clone)]
 pub struct Bullet{
@@ -848,7 +852,6 @@ impl GameData {
         let a_pos = Vector2::new( a_phy.x , a_phy.y );
         let b_pos = Vector2::new( b_phy.x , b_phy.y );
 
-        //DrawCircleV( &Vector2f::new(a_pos.x + 2.0*a_col.radius , a_pos.y), a_col.radius, Color{r:255, g:255, b:255, a:255});
         return CheckCollisionCircles(&a_pos, a_col.radius,
                                      &b_pos, b_col.radius);
     }
@@ -1071,7 +1074,10 @@ impl GameData {
     }
 
     fn do_despawn(&mut self){
-        let mask = (self.world.despawn_far_left.mask.clone() | self.world.despawn_far_right.mask.clone()) & self.world.physical_list.mask.clone();
+        let mask = (self.world.despawn_far_left.mask.clone() |
+                    self.world.despawn_far_right.mask.clone() |
+                    self.world.despawn_y_list.mask.clone() ) &
+                    self.world.physical_list.mask.clone();
 
         for id in mask {
             let phy = self.world.physical_list.get(id as IDType).unwrap();
@@ -1079,6 +1085,11 @@ impl GameData {
                 self.world.destroy_later(id as IDType);
             } 
             if self.world.despawn_far_right.contains(id as IDType) && phy.x > GetScreenWidth() as f32 + 120.0 {
+                self.world.destroy_later(id as IDType);
+            }
+
+            if self.world.despawn_y_list.contains(id as IDType) && 
+                    ( phy.y < -20.0 || phy.y > GetScreenHeight() as f32 + 20.0) {
                 self.world.destroy_later(id as IDType);
             }
         }
