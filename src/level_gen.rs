@@ -117,7 +117,7 @@ fn gen_player() -> Prefab{
                  .build())
         .weapon( WeaponBuilder::new()
                  .fire_angle(60.0)
-                 .fire_rate(0.2*FRAME_RATE)
+                 .fire_rate(0.3)
                  .fire_velocity(300.0)
                  .fire_sound("laser001.wav".to_string())
                  .prefab(PrefabBuilder::new()
@@ -132,7 +132,6 @@ fn gen_player() -> Prefab{
                                      .build())
                            .build())
                  .offset(40.0)
-                 .gun_cooldown_frames(1)
                  .build())
         .team(Team{team:0})
         .build()
@@ -259,7 +258,7 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .frequency(rng.gen_range(0.5, 2.0))
                         .build())
         .weapon( WeaponBuilder::new()
-                 .fire_rate(3.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .fire_rate(rng.gen_range(0.7, 1.0))
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
                            .despawn_far_left(DespawnFarLeft{})
@@ -281,7 +280,7 @@ fn gen_enemy_2(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .build())
                  .fire_velocity(rng.gen_range(-300.0, -280.0))
                  .offset(-10.0)
-                 .gun_cooldown_frames((FRAME_RATE * rng.gen_range(2.0,4.0)) as i32)
+                 .gun_cooldown_frames(rng.gen_range(2.0,4.0))
                  .build())
         .team(Team{team:1})
         .build()
@@ -322,7 +321,7 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
         .weapon( WeaponBuilder::new()
                  .pattern(2)
                  .fire_angle(rng.gen_range(90.0, 120.0))
-                 .fire_rate(1.0*FRAME_RATE+rng.next_f32()* 0.5)
+                 .fire_rate(rng.gen_range(1.0, 1.5))
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
                            .despawn_far_left(DespawnFarLeft{})
@@ -340,7 +339,7 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .build())
                  .fire_velocity(rng.gen_range(-300.0, -200.0))
                  .offset(-10.0)
-                 .gun_cooldown_frames((FRAME_RATE * rng.gen_range(1.0, 3.0)) as i32)
+                 .gun_cooldown_frames(rng.gen_range(1.0, 3.0))
                  .build())
         .team(Team{team:1})
         .build()
@@ -371,7 +370,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                           .speed(100.0)
                           .build())
         .weapon( WeaponBuilder::new()
-                 .fire_rate(rng.gen_range(3.0*FRAME_RATE,4.0*FRAME_RATE))
+                 .fire_rate(rng.gen_range(3.0, 4.0))
                  .prefab(PrefabBuilder::new()
                            .team(Team{team:1})
                            .despawn_far_left(DespawnFarLeft{})
@@ -385,7 +384,7 @@ fn gen_enemy_1(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                            .build())
                  .fire_velocity(-300.0 - rng.next_f32() * 0.2)
                  .offset(-10.0)
-                 .gun_cooldown_frames((FRAME_RATE * rng.gen_range(1.0, 3.0)) as i32)
+                 .gun_cooldown_frames(rng.gen_range(1.0, 3.0))
                  .build())
         .team(Team{team:1})
         .build()
@@ -461,10 +460,10 @@ fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab 
                        .build())
         .weapon(WeaponBuilder::new()
                 .prefab(bomb)
-                .fire_rate(rng.gen_range(4.0, 5.0)*FRAME_RATE)
+                .fire_rate(rng.gen_range(4.0, 5.0))
                 .fire_sound("bomb-launch.wav".to_string())
                 .fire_velocity(rng.gen_range(50.0, 100.0)*-1.0)
-                .gun_cooldown_frames( (5.0*FRAME_RATE) as i32 )
+                .gun_cooldown_frames( 5.0 )
                 .offset(-40.0)
                 .build())
         .collidable(Collidable{radius: 30.0})
@@ -559,7 +558,7 @@ pub fn gen_level_from_weights(difficulty: f32,
     let mut ret = SpawnPlan::new();
     let chooser = WeightedChoice::new(&mut weights);
 
-    let mut len_left = length - rng.gen_range(0.0, 100.0);
+    let mut len_left = length - rng.gen_range(0.0, 1.0 * FRAME_RATE);
     while len_left > 0.0 {
         let mut spawner = Spawner::new();
         let mut cur_diff = difficulty;
@@ -569,7 +568,7 @@ pub fn gen_level_from_weights(difficulty: f32,
             spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
 
-        let offset = rng.gen_range(0.0, 500.0);
+        let offset = rng.gen_range(0.0, 500.0 * FRAME_RATE);
         let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);
@@ -691,10 +690,10 @@ pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u64, mut rng
                      .build())
         .weapon(WeaponBuilder::new()
                 .fire_angle(360.0)
-                .fire_rate(3.0 * FRAME_RATE)
+                .fire_rate(3.0)
                 .fire_velocity(-270.0)
                 .offset(-00.0)
-                .gun_cooldown_frames((FRAME_RATE * 3.0) as i32)
+                .gun_cooldown_frames(3.0)
                 .pattern(8)
                 .prefab(PrefabBuilder::new()
                         .physical(PhysicalBuilder::new().build())
@@ -747,10 +746,10 @@ pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u64, mut rng
                      .clear_spawn_plan(true)
                      .build())
         .weapon( WeaponBuilder::new()
-                 .fire_rate(6.0*FRAME_RATE)
+                 .fire_rate(6.0)
                  .fire_angle(120.0)
                  .fire_velocity(-60.0)
-                 .gun_cooldown_frames((FRAME_RATE*4.0) as i32)
+                 .gun_cooldown_frames(4.0)
                  .fire_sound("boss001_shot.wav".to_string())
                  .prefab(minion.clone())
                  .pattern(3)
@@ -822,7 +821,7 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: 
 
     let chooser = WeightedChoice::new(&mut weights);
 
-    let mut len_left = length - rng.gen_range(0.0, 100.0);
+    let mut len_left = length - rng.gen_range(0.0, 3.0 * FRAME_RATE);
     while len_left > 0.0 {
         spawner = Spawner::new();
         let mut cur_diff = difficulty;
@@ -832,7 +831,7 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: 
             spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
 
-        let offset = rng.gen_range(0.0, 500.0);
+        let offset = rng.gen_range(0.0, 2.0 * FRAME_RATE);
         let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);

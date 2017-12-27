@@ -83,8 +83,6 @@ impl EcsWorld {
         )+
         return ret.build();
     }
-
-
 }
 
 #[derive(Clone)]

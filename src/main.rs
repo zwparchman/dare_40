@@ -49,6 +49,7 @@ mod storage;
 use std::collections::{HashSet};
 
 const FRAME_RATE: f32 = 60.0;
+// const FRAME_RATE: f32 = 120.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
 
 const SLOWDOWN_FACTOR: f32 = 0.6;
@@ -408,7 +409,7 @@ impl PowerupBuilder {
 
 
 
-const PART_INSTALLED_AT: i32 = 120;
+const PART_INSTALLED_AT: i32 = (FRAME_RATE * 2.0 ) as i32;
 #[derive(Clone)]
 pub struct PlayerStats {
     movement_speed: f32,
@@ -468,7 +469,7 @@ impl WeaponBuilder {
     }
 
     fn fire_rate(mut self, val: f32) -> Self{
-        self.thing.fire_rate = val;
+        self.thing.fire_rate = val * FRAME_RATE;
         self
     }
 
@@ -477,8 +478,8 @@ impl WeaponBuilder {
         self
     }
 
-    fn gun_cooldown_frames(mut self, val: i32) -> Self{
-        self.thing.gun_cooldown_frames = val;
+    fn gun_cooldown_frames(mut self, val: f32) -> Self{
+        self.thing.gun_cooldown_frames = (val * FRAME_RATE) as i32;
         self
     }
 
@@ -980,15 +981,26 @@ impl GameData {
                 shield.max_shield *= upgrade.shield_increase;
                 weapon.pattern += upgrade.shot_increase;
 
+                let damage;
+
                 {
                     let bullet: &mut Bullet = &mut weapon.prefab.bullet.clone().unwrap();
                     bullet.damage *= upgrade.fire_damage_increase;
+                    damage = bullet.damage;
 
                     let mut wc = weapon.clone();
                     let bullet_prefab = std::sync::Arc::make_mut(&mut wc.prefab);
                     bullet_prefab.bullet = Some(bullet.clone());
                     weapon.prefab = Arc::new(bullet_prefab.clone());
                 }
+
+
+                debug!("powerup data: Current stats: fire_rate {} regen {} max_shield {} pattern {} damage {}",
+                       weapon.fire_rate,
+                       shield.regen,
+                       shield.max_shield,
+                       weapon.pattern,
+                       damage);
 
                 self.world.shield_list.add(id as IDType, shield);
                 self.world.weapon_list.add(id as IDType, weapon);
@@ -1316,7 +1328,7 @@ fn main(){
 
     let mut gl = GameData::new();
 
-    gl.spawn_plan = gen_level(10.0, 100.0, 0, &mut gl.rng);
+    gl.spawn_plan = gen_level(10.0, FRAME_RATE*4.0, 0, &mut gl.rng);
 
 
     while ! WindowShouldClose() {
