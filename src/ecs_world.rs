@@ -1,11 +1,6 @@
 #[allow(unused)]
 use *;
 
-
-macro_rules! new {
-        ($my_type: ty) => ( <$my_type>::new() )
-}
-
 macro_rules! declare_ecs_world_full {
     ($(($name: ident, $list: ident, $type: ty, $storage: ty),)+) => {
 
@@ -24,7 +19,7 @@ impl EcsWorld {
     pub fn new() -> Self {
         Self {
             $(
-                $list: new!($storage),
+                $list: <$storage>::new(),
             )+
 
 
@@ -114,6 +109,7 @@ impl Prefab {
 }
 
 #[derive(Clone)]
+/// Helper for building a prefab
 pub struct PrefabBuilder {
     thing: Prefab,
 }
@@ -139,7 +135,7 @@ impl PrefabBuilder{
     }
 }
 
-}}
+}} //end of macro definition
 
 declare_ecs_world_full!(
     (drawable, drawable_list, Drawable, VectorStorage<Drawable>),
