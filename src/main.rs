@@ -75,6 +75,40 @@ pub struct StopAt {
     xloc: f32,
 }
 
+#[derive(Clone)]
+pub struct Drag {
+    x: f32,
+    y: f32,
+}
+
+#[derive(Clone)]
+pub struct DragBuilder {
+    thing: Drag,
+}
+
+impl DragBuilder {
+    pub fn new() -> Self {
+        Self{ thing: Drag {
+            x: 0.0,
+            y: 0.0,
+        }}
+    }
+
+    pub fn build(self) -> Drag {
+        self.thing
+    }
+
+    pub fn x(mut self, val: f32) -> Self {
+        self.thing.x = val;
+        self
+    }
+
+    pub fn y(mut self, val: f32) -> Self {
+        self.thing.y = val;
+        self
+    }
+}
+
 struct StopAtBuilder {
     thing: StopAt,
 }
@@ -164,11 +198,48 @@ impl SineMovementBuilder {
 }
 
 #[derive(Clone)]
+pub struct ClampY {
+    low: f32,
+    high: f32,
+}
+
+pub struct ClampYBuilder {
+    thing: ClampY,
+}
+impl ClampYBuilder {
+    fn new() -> Self {
+        Self { thing: ClampY {
+            high: 0.0,
+            low: 0.0,
+        }}
+    }
+
+    fn build(self) -> ClampY {
+        self.thing
+    }
+
+    fn low(mut self, val: f32) -> Self {
+        self.thing.low = val;
+        self
+    }
+
+    fn high(mut self, val: f32) -> Self {
+        self.thing.high = val;
+        self
+    }
+
+}
+
+#[derive(Clone)]
 pub struct Physical{
     x: f32,
     y: f32,
+
     xvel: f32,
     yvel: f32,
+
+    xacc: f32,
+    yacc: f32,
 }
 
 #[derive(Clone)]
@@ -178,7 +249,14 @@ struct PhysicalBuilder{
 
 impl PhysicalBuilder{
     fn new() -> Self {
-        PhysicalBuilder{ thing: Physical{x:0.0, y:0.0, xvel:0.0, yvel:0.0}}
+        PhysicalBuilder{ thing: Physical{
+            x:0.0,
+            y:0.0,
+            xvel:0.0,
+            yvel:0.0,
+            xacc: 0.0,
+            yacc: 0.0,
+        }}
     }
     fn x(mut self, val: f32) -> Self{
         self.thing.x = val;
@@ -195,6 +273,17 @@ impl PhysicalBuilder{
     #[allow(unused)]
     fn yvel(mut self, val: f32) -> Self{
         self.thing.yvel = val;
+        self
+    }
+
+    fn xacc(mut self, val: f32) -> Self{
+        self.thing.xacc = val;
+        self
+    }
+
+    #[allow(unused)]
+    fn yacc(mut self, val: f32) -> Self{
+        self.thing.xacc = val;
         self
     }
 
@@ -309,6 +398,35 @@ pub struct DespawnFarRight{}
 pub struct DespawnFarLeft{}
 #[derive(Clone)]
 pub struct DespawnY{}
+
+#[derive(Clone)]
+pub struct AvoidPlayerY{
+    speed: f32,
+}
+
+#[derive(Clone)]
+pub struct AvoidPlayerYBuilder {
+    thing: AvoidPlayerY,
+}
+
+impl AvoidPlayerYBuilder {
+    fn new() -> Self {
+        Self{thing:AvoidPlayerY{
+            speed: 0.0,
+        }}
+    }
+
+    fn speed(mut self, val: f32) -> Self {
+        self.thing.speed = val;
+        self
+    }
+
+    fn build(self) -> AvoidPlayerY {
+        self.thing
+    }
+}
+
+
 
 #[derive(Clone)]
 pub struct FollowPlayerY{
@@ -655,6 +773,13 @@ impl GameData {
                                                    500.0,
                                                    self.frame_count ,
                                                    &mut self.rng);
+            } else if self.wave == 40 {
+                self.difficulty += 40.0;
+                self.spawn_plan = gen_boss_2_level(self.difficulty,
+                                                   500.0,
+                                                   self.frame_count ,
+                                                   &mut self.rng);
+
             } else {
                 self.spawn_plan = gen_level(self.difficulty,
                                             500.0,
@@ -678,9 +803,12 @@ impl GameData {
             self.do_sine_movement_x();
             self.do_install();
             self.do_stop_at();
+            self.do_drag();
             self.do_movement();
+            self.do_clamp_y();
             self.do_despawn();
             self.do_follow_player();
+            self.do_avoid_player();
             self.do_collision();
             self.do_timeout_death();
             self.do_death_check();
@@ -693,6 +821,21 @@ impl GameData {
         }
     }
 
+    fn do_drag(&mut self) {
+        let mask = self.world.drag_list.mask.clone() &
+            self.world.physical_list.mask.clone();
+
+        for id in mask {
+            let drag = self.world.drag_list.get(id as IDType).unwrap();
+            let mut phy  = self.world.physical_list.get(id as IDType).unwrap();
+
+            phy.xvel *= 1.0 - ( drag.x * FRAME_TIME );
+            phy.yvel *= 1.0 - ( drag.y * FRAME_TIME );
+
+            self.world.physical_list.add(id as IDType, phy);
+        }
+    }
+
     fn get_player_id(&self) -> Option<IDType> {
         let mask = self.world.controllable_list.mask.clone();
         for id in mask {
@@ -700,6 +843,52 @@ impl GameData {
         }
         None
     }
+
+    fn do_clamp_y(&mut self){
+        let mask = self.world.clamp_y_list.mask.clone() &
+                   self.world.physical_list.mask.clone();
+        for id_ in mask {
+            let id = id_ as IDType;
+
+            let mut phy = self.world.physical_list.get(id).unwrap();
+            let clamp = self.world.clamp_y_list.get(id).unwrap();
+
+            if phy.y < clamp.low {
+                phy.y = clamp.low;
+            } else if phy.y > clamp.high {
+                phy.y = clamp.high;
+            }
+
+            self.world.physical_list.add(id, phy);
+        }
+    }
+
+    fn do_avoid_player(&mut self){
+        let mask = self.world.avoid_player_y_list.mask.clone() &
+                   self.world.physical_list.mask.clone();
+
+        let player_id_opt = self.get_player_id();
+        if player_id_opt.is_none() { return }
+        let player_id = player_id_opt.unwrap();
+
+        let player_phy = self.world.physical_list.get(player_id as IDType).unwrap();
+
+        for id in mask {
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+            let fol = self.world.avoid_player_y_list.get(id as IDType).unwrap();
+
+            let diff = - player_phy.y + phy.y;
+            let to_move = diff.abs();
+            let dir = { if diff > 0.0 { 1.0 } else { -1.0 } };
+            let will_move = min_float(to_move, fol.speed * FRAME_TIME);
+
+            phy.y += will_move * dir;
+
+            self.world.physical_list.add(id as IDType, phy);
+        }
+    }
+
+
 
     fn do_follow_player(&mut self){
         let mask = self.world.follow_player_y_list.mask.clone() &
@@ -1284,6 +1473,8 @@ impl GameData {
         let mask = self.world.physical_list.mask.clone();
         for id in mask {
             let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+            phy.xvel += phy.xacc * FRAME_TIME;
+            phy.yvel += phy.yacc * FRAME_TIME;
             phy.x += phy.xvel * FRAME_TIME;
             phy.y += phy.yvel * FRAME_TIME;
             self.world.physical_list.add(id as IDType, phy);

@@ -427,6 +427,9 @@ fn gen_bomb(rng: &mut rand::isaac::Isaac64Rng) -> Prefab {
                   .layer(2.0)
                   .build())
         .physical(PhysicalBuilder::new().build())
+        .drag(DragBuilder::new()
+              .x(0.8)
+              .build())
         .timeout_death(TimeoutDeathBuilder::new()
                        .ticks( (4.0*FRAME_RATE) as i32)
                        .build())
@@ -448,7 +451,7 @@ fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab 
         .physical(PhysicalBuilder::new()
                   .x(x)
                   .y(y)
-                  .xvel(-50.0)
+                  .xvel(-70.0)
                   .build())
         .auto_fire(AutoFire{})
         .shield(ShieldBuilder::new()
@@ -462,13 +465,13 @@ fn gen_enemy_5(x: f32, y: f32, mut rng: &mut rand::isaac::Isaac64Rng) -> Prefab 
                 .prefab(bomb)
                 .fire_rate(rng.gen_range(4.0, 5.0))
                 .fire_sound("bomb-launch.wav".to_string())
-                .fire_velocity(rng.gen_range(50.0, 100.0)*-1.0)
+                .fire_velocity(rng.gen_range(-300.0, -200.0))
                 .gun_cooldown_frames( 5.0 )
                 .offset(-40.0)
                 .build())
         .collidable(Collidable{radius: 30.0})
         .death_event(DeathEventBuilder::new()
-                     .score_add(5)
+                     .score_add(20)
                      .sound_by_name("explosion002.wav".to_string())
                      .build())
         .despawn_far_left(DespawnFarLeft{})
@@ -617,6 +620,130 @@ pub fn gen_level_simple(difficulty: f32, length: f32, start_frame: u64, mut rng:
     ]; 
 
     return gen_level_from_weights(difficulty, length, start_frame, &mut rng, &mut weights);
+}
+
+pub fn gen_boss_2_level(_difficulty: f32, _length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+    let mut plan = SpawnPlan::new();
+    let mut spawner = Spawner::new();
+
+    let missile_builder = PrefabBuilder::new()
+        .team(Team{team: 1})
+        .follow_player_y(FollowPlayerYBuilder::new()
+                         .speed(70.0)
+                         .build())
+        .shield(ShieldBuilder::new()
+                .ammount(30.0)
+                .build())
+        .team(Team{team: 1})
+        .collidable(Collidable{radius: 4.0})
+        .drawable(DrawableBuilder::new()
+                  .layer(1.0)
+                  .texture_by_name("missile.png".to_string())
+                  .build())
+        .despawn_far_left(DespawnFarLeft{})
+        .bullet(Bullet{damage: 5.0})
+        .drag(DragBuilder::new()
+              .y(0.90)
+              .build());
+
+    let mut missile_spawner = Spawner::new();
+    for i in 0..4_i32 {
+        let xoff = 10.0 * i as f32;
+        let yoff = 10.0;
+
+        let xvel = -10.0 * i as f32;
+        let yvel = i as f32 *120.0;
+
+        let xacc = -300.0;
+        let p1 = PhysicalBuilder::new()
+            .x(xoff)
+            .y(yoff)
+            .xvel(xvel)
+            .yvel(yvel)
+            .xacc(xacc)
+            .build();
+        let p2 = PhysicalBuilder::new()
+            .x(xoff)
+            .y(-yoff)
+            .xvel(xvel)
+            .yvel(-yvel)
+            .xacc(xacc)
+            .build();
+
+        missile_spawner.push(missile_builder.clone()
+                             .physical(p1)
+                             .build());
+        missile_spawner.push(missile_builder.clone()
+                             .physical(p2)
+                             .build());
+    }
+
+    let spawn_missile_prefab = PrefabBuilder::new()
+        .physical(PhysicalBuilder::new().build())
+        .death_event(DeathEventBuilder::new()
+                    .spawner(Arc::new(missile_spawner))
+                    .build())
+        .timeout_death(TimeoutDeathBuilder::new()
+                       .ticks(1)
+                       .build())
+        .build();
+
+    let shot_increase_powerup = gen_shot_increase(0.0, 0.0, &mut rng);
+    let mut shot_increase_spawner = Spawner::new();
+    shot_increase_spawner.push(shot_increase_powerup);
+
+    let boss = PrefabBuilder::new()
+        .drawable(DrawableBuilder::new()
+                  .texture_by_name("boss002.png".to_string())
+                  .build())
+        .physical(PhysicalBuilder::new()
+                  .x(1400.0)
+                  .y(400.0)
+                  .xvel(-100.0)
+                  .build())
+        .team(Team{team:1})
+        .sine_movement(SineMovementBuilder::new()
+                       .amplitude(50.0)
+                       .frequency(1.0)
+                       .build())
+        .follow_player_y(FollowPlayerYBuilder::new()
+                         .speed(5.0)
+                         .build())
+        .weapon(WeaponBuilder::new()
+                .fire_rate(5.0)
+                .fire_velocity(0.0)
+                .fire_sound("missile-launch.wav".to_string())
+                .prefab(spawn_missile_prefab)
+                .build())
+        .auto_fire(AutoFire{})
+        .stop_at(StopAtBuilder::new()
+                .xloc(1100.0)
+                .build())
+        .shield(ShieldBuilder::new()
+                .ammount(800.0)
+                .build())
+        .boss_health_draw(BossHealthDrawBuilder::new().build())
+        .collidable(Collidable{radius: 50.0})
+        .avoid_player_y(AvoidPlayerYBuilder::new()
+                        .speed(25.0)
+                        .build())
+        .clamp_y(ClampYBuilder::new()
+                 .low(50.0)
+                 .high(700.0)
+                 .build())
+        .death_event(DeathEventBuilder::new()
+                     .sound_by_name("explosion001.wav".to_string())
+                     .spawner(Arc::new(shot_increase_spawner))
+                     .build())
+        .build();
+
+    spawner.push( boss );
+    plan.add( (start_frame as f32 + 1.0 * FRAME_RATE) as u64, spawner);
+
+    spawner = Spawner::new();
+    spawner.push( PrefabBuilder::new().build());
+    plan.add((start_frame as f32 + 1000.0 * FRAME_RATE) as u64, spawner);
+    return plan;
 }
 
 pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
@@ -788,13 +915,22 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut r
         return gen_first_level(difficulty, length, start_frame, &mut rng);
     }
 
-    let mut weights = vec![
-        // Weighted{ weight: 9999, item: gen_boss_1_level as GenLevel },
-        Weighted{ weight: 1, item: gen_level_bomber as GenLevel },
-        Weighted{ weight: 1, item: gen_level_bad_upgrade as GenLevel },
-        Weighted{ weight: 2, item: gen_level_simple as GenLevel },
-        Weighted{ weight: 5, item: gen_level_normal as GenLevel },
-    ];
+    let mut weights = Vec::<Weighted<GenLevel>>::new();
+    if start_frame as f32 > 0.0 {
+        weights.push( Weighted{ weight: 2, item: gen_level_simple as GenLevel });
+    }
+
+    if start_frame as f32 > 10.0 * FRAME_RATE {
+        weights.push( Weighted{ weight: 5, item: gen_level_normal as GenLevel } );
+    }
+
+    if start_frame as f32 > 20.0 * FRAME_RATE {
+        weights.push( Weighted{ weight: 1, item: gen_level_bomber as GenLevel } );
+    }
+
+    if start_frame as f32 > 30.0 * FRAME_RATE {
+        weights.push(Weighted{ weight: 1, item: gen_level_bad_upgrade as GenLevel });
+    }
 
     let chooser = WeightedChoice::new(&mut weights);
 

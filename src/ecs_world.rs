@@ -158,4 +158,7 @@ declare_ecs_world_full!(
     (boss_health_draw, boss_health_draw_list, BossHealthDraw, HashStorage<BossHealthDraw>),
     (despawn_y, despawn_y_list, DespawnY, HashStorage<DespawnY>),
     (follow_player_y, follow_player_y_list, FollowPlayerY, HashStorage<FollowPlayerY>),
+    (drag, drag_list, Drag, HashStorage<Drag>),
+    (avoid_player_y, avoid_player_y_list, AvoidPlayerY, HashStorage<AvoidPlayerY>),
+    (clamp_y, clamp_y_list, ClampY, HashStorage<ClampY>),
 );
