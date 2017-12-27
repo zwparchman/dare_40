@@ -999,14 +999,17 @@ pub fn gen_star_spawner(start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng)
 
     let mut ret = SpawnPlan::new();
 
-    while to_spawn != 0 || to_spawn > 1000 {
+    if start_frame == 0 {
+        to_spawn = 50;
+    }
+
+    while to_spawn != 0 && to_spawn < 10000 {
         let step = rng.gen_range(0,density);
         cur_frame += step;
         to_spawn -= 1;
 
         let mut spawner = Spawner::new();
         if start_frame == 0 {
-            to_spawn -= 3;
             let mut star = fun(rng.gen_range(0.0, 1.0), &mut rng);
             if let Some(ref mut phy) = star.physical {
                 phy.x = rng.gen_range(0.0, 1300.0);
