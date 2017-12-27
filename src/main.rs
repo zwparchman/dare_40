@@ -774,7 +774,7 @@ impl GameData {
                                                    self.frame_count ,
                                                    &mut self.rng);
             } else if self.wave == 40 {
-                self.difficulty += 40.0;
+                self.difficulty *= 1.5;
                 self.spawn_plan = gen_boss_2_level(self.difficulty,
                                                    500.0,
                                                    self.frame_count ,
@@ -782,7 +782,7 @@ impl GameData {
 
             } else {
                 self.spawn_plan = gen_level(self.difficulty,
-                                            500.0,
+                                            10.0 * FRAME_RATE,
                                             self.frame_count ,
                                             &mut self.rng);
             }

@@ -133,6 +133,10 @@ fn gen_player() -> Prefab{
                            .build())
                  .offset(40.0)
                  .build())
+        .clamp_y(ClampYBuilder::new()
+                 .low(0.0)
+                 .high(768.0)
+                 .build())
         .team(Team{team:0})
         .build()
 }
@@ -314,6 +318,10 @@ fn gen_enemy_3(x: f32, y: f32, rng: &mut rand::isaac::Isaac64Rng) -> Prefab{
                         .amplitude(rng.gen_range(300.0,320.0))
                         .frequency(rng.gen_range(0.05,1.0))
                         .build())
+        .clamp_y(ClampYBuilder::new()
+                 .low(0.0)
+                 .high(768.0)
+                 .build())
         .sine_movement_x( SineMovementXBuilder::new()
                           .amplitude(rng.gen_range(50.0, 150.0))
                           .frequency(rng.gen_range(0.05, 0.30))
@@ -571,7 +579,7 @@ pub fn gen_level_from_weights(difficulty: f32,
             spawner.push(fun(rng.gen_range(1400.0, 1500.0), rng.gen_range(0.0, 700.0), &mut rng));
         }
 
-        let offset = rng.gen_range(0.0, 5.0 * FRAME_RATE);
+        let offset = FRAME_RATE * rng.gen_range(3.0, 5.0);
         let when: u64 = start_frame + len_left as u64;
 
         // print!("when {}\n", when);
@@ -734,6 +742,7 @@ pub fn gen_boss_2_level(_difficulty: f32, _length: f32, start_frame: u64, mut rn
         .death_event(DeathEventBuilder::new()
                      .sound_by_name("explosion001.wav".to_string())
                      .spawner(Arc::new(shot_increase_spawner))
+                     .clear_spawn_plan(true)
                      .build())
         .build();
 
@@ -898,9 +907,9 @@ pub fn gen_boss_1_level(difficulty: f32, _length: f32, start_frame: u64, mut rng
 pub fn gen_level_normal(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut weights = vec![ 
         Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 2.0) },
-        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 10.0)},
+        Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 30.0)},
         Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 30.0) },
-        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 50.0) },
+        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 90.0) },
         Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 20.0) },
         Weighted{ weight: 2, item: (gen_random_upgrade as GenThing, 1.0) },
     ]; 
@@ -920,15 +929,15 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut r
         weights.push( Weighted{ weight: 2, item: gen_level_simple as GenLevel });
     }
 
-    if start_frame as f32 > 10.0 * FRAME_RATE {
+    if start_frame as f32 > 30.0 * FRAME_RATE {
         weights.push( Weighted{ weight: 5, item: gen_level_normal as GenLevel } );
     }
 
-    if start_frame as f32 > 20.0 * FRAME_RATE {
-        weights.push( Weighted{ weight: 1, item: gen_level_bomber as GenLevel } );
+    if start_frame as f32 > 60.0 * FRAME_RATE {
+        weights.push( Weighted{ weight: 3, item: gen_level_bomber as GenLevel } );
     }
 
-    if start_frame as f32 > 30.0 * FRAME_RATE {
+    if start_frame as f32 > 90.0 * FRAME_RATE {
         weights.push(Weighted{ weight: 1, item: gen_level_bad_upgrade as GenLevel });
     }
 
@@ -950,7 +959,7 @@ pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: 
         Weighted{ weight: 5, item: (gen_enemy_4 as GenThing, 10.0) },
         Weighted{ weight: 1, item: (gen_enemy_1 as GenThing, 20.0)},
         Weighted{ weight: 1, item: (gen_enemy_2 as GenThing, 40.0) },
-        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 60.0) },
+        Weighted{ weight: 1, item: (gen_enemy_3 as GenThing, 90.0) },
         Weighted{ weight: 1, item: (gen_enemy_5 as GenThing, 30.0) },
         Weighted{ weight: 2, item: (gen_random_upgrade as GenThing, 1.0) },
     ]; 
