@@ -12,6 +12,9 @@ extern crate pretty_env_logger;
 
 use std::f32;
 
+mod ecs_world;
+use ecs_world::*;
+
 mod raylib;
 use raylib::{Texture2D, Rectangle, DrawTexturePro, Color};
 
@@ -560,127 +563,6 @@ pub struct Install{}
 #[derive(Clone)]
 pub struct Team{team: i32}
 
-
-pub struct EcsWorld {
-    drawable_list: VectorStorage<Drawable>,
-    physical_list: VectorStorage<Physical>,
-    collidable_list: VectorStorage<Collidable>,
-    controllable_list: HashStorage<PlayerControl>,
-    bullet_list: HashStorage<Bullet>,
-    shield_list: HashStorage<Shield>,
-    despawn_left: HashStorage<DespawnFarLeft>,
-    despawn_right: HashStorage<DespawnFarRight>,
-    powerup_list: HashStorage<Powerup>,
-    player_stats_list: HashStorage<PlayerStats>,
-    weapon_list: HashStorage<Weapon>,
-    auto_fire_list: HashStorage<AutoFire>,
-    sine_movement_list: HashStorage<SineMovement>,
-    sine_movement_x_list: HashStorage<SineMovementX>,
-    team_list: VectorStorage<Team>,
-    install_list: HashStorage<Install>,
-    death_event_list: HashStorage<DeathEvent>,
-    stop_at_list: HashStorage<StopAt>,
-    timeout_death_list: HashStorage<TimeoutDeath>,
-    boss_health_draw_list: HashStorage<BossHealthDraw>,
-
-    unused_ids: Vec<IDType>,
-    max_id: IDType,
-
-    to_destroy: Vec<IDType>,
-}
-
-impl EcsWorld {
-    fn new() -> Self {
-        Self {
-            drawable_list: VectorStorage::<Drawable>::new(),
-            physical_list: VectorStorage::<Physical>::new(),
-            collidable_list: VectorStorage::<Collidable>::new(),
-            controllable_list: HashStorage::<PlayerControl>::new(),
-            bullet_list: HashStorage::<Bullet>::new(),
-            shield_list: HashStorage::<Shield>::new(),
-            despawn_left: HashStorage::<DespawnFarLeft>::new(),
-            despawn_right: HashStorage::<DespawnFarRight>::new(),
-            powerup_list: HashStorage::<Powerup>::new(),
-            player_stats_list: HashStorage::<PlayerStats>::new(),
-            weapon_list: HashStorage::<Weapon>::new(),
-            auto_fire_list: HashStorage::<AutoFire>::new(),
-            sine_movement_list: HashStorage::<SineMovement>::new(),
-            sine_movement_x_list: HashStorage::<SineMovementX>::new(),
-            team_list: VectorStorage::<Team>::new(),
-            install_list: HashStorage::<Install>::new(),
-            death_event_list: HashStorage::<DeathEvent>::new(),
-            stop_at_list: HashStorage::<StopAt>::new(),
-            timeout_death_list: HashStorage::<TimeoutDeath>::new(),
-            boss_health_draw_list: HashStorage::<BossHealthDraw>::new(),
-
-            unused_ids: Vec::<IDType>::new(),
-            max_id: 0,
-            to_destroy: Vec::<IDType>::new(),
-        }
-    }
-
-    #[allow(unused)]
-    fn get_max_id(&self) -> IDType {
-        self.max_id
-    }
-
-    fn destroy(&mut self, id: IDType){
-        self.drawable_list.remove(id);
-        self.physical_list.remove(id);
-        self.collidable_list.remove(id);
-        self.controllable_list.remove(id);
-        self.bullet_list.remove(id);
-        self.shield_list.remove(id);
-        self.despawn_left.remove(id);
-        self.despawn_right.remove(id);
-        self.powerup_list.remove(id);
-        self.player_stats_list.remove(id);
-        self.weapon_list.remove(id);
-        self.auto_fire_list.remove(id);
-        self.sine_movement_list.remove(id);
-        self.sine_movement_x_list.remove(id);
-        self.team_list.remove(id);
-        self.install_list.remove(id);
-        self.death_event_list.remove(id);
-        self.stop_at_list.remove(id);
-        self.timeout_death_list.remove(id);
-        self.boss_health_draw_list.remove(id);
-
-        self.free_id(id);
-    }
-
-    fn maintain(&mut self){
-        self.to_destroy.sort();
-        self.to_destroy.dedup_by(|a, b| { a == b } );
-
-        for id in self.to_destroy.clone() {
-            self.destroy(id);
-        }
-        self.to_destroy.clear();
-    }
-
-    fn alloc_id(&mut self) -> IDType {
-        let out: IDType;
-        if 0 != self.unused_ids.len() {
-            let val = self.unused_ids.pop().unwrap();
-            out = val;
-        } else {
-            out = self.max_id;
-            self.max_id += 1;
-        }
-
-        //print!("alocated id {} on frame {}\n", out, self.frame_count);
-        return out;
-    }
-
-    fn free_id(&mut self, id: IDType) {
-        self.unused_ids.push(id);
-    }
-
-    fn destroy_later(&mut self, id: IDType) {
-        self.to_destroy.push(id);
-    }
-}
 
 pub struct GameData{
     frame_count: u64,
