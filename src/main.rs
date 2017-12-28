@@ -35,7 +35,6 @@ type  Vector2f = Vector2<f32>;
 #[allow(unused)]
 type  Point2f = Point2<f32>;
 
-#[allow(non_camel_case_types)]
 type IDType=i64;
 
 #[allow(unused)]

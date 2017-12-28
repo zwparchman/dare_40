@@ -36,7 +36,6 @@ impl Spawner {
             ffab.spawn(&mut gd);
         }
     }
-
 }
 
 pub struct SpawnPlan {
@@ -946,7 +945,7 @@ pub fn gen_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut r
     return chooser.ind_sample(&mut rng)(difficulty, length, start_frame, &mut rng);
 }
 
-pub fn gen_first_level(difficulty: f32, length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
+pub fn gen_first_level(_difficulty: f32, _length: f32, start_frame: u64, mut rng: &mut rand::isaac::Isaac64Rng) -> SpawnPlan {
     let mut ret = SpawnPlan::new();
 
     let mut spawner = Spawner::new();
