@@ -12,6 +12,7 @@ hibitset = "*"
 synth = "*"
 log = "0.4"
 pretty_env_logger = "*"
+derive_builder = "*"
 
 quickersort = "3.0"
 rand = "0.3"

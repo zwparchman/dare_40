@@ -3,6 +3,8 @@
 // `cached!` macro requires the `lazy_static!` macro
 #[macro_use] extern crate lazy_static;
 
+#[macro_use] extern crate derive_builder;
+
 // extern crate hibitset;
 extern crate quickersort;
 extern crate nalgebra;
@@ -70,271 +72,100 @@ fn min_float(a: f32, b: f32) -> f32 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone, Builder)]
+#[builder(pattern="owned")]
+pub struct Drag {
+    #[builder(default="0.0")]
+    x: f32,
+    #[builder(default="0.0")]
+    y: f32,
+}
+
+#[derive(Default, Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct StopAt {
+    #[builder(default="-102.0")]
     xloc: f32,
 }
 
-#[derive(Clone)]
-pub struct Drag {
-    x: f32,
-    y: f32,
-}
-
-#[derive(Clone)]
-pub struct DragBuilder {
-    thing: Drag,
-}
-
-impl DragBuilder {
-    pub fn new() -> Self {
-        Self{ thing: Drag {
-            x: 0.0,
-            y: 0.0,
-        }}
-    }
-
-    pub fn build(self) -> Drag {
-        self.thing
-    }
-
-    pub fn x(mut self, val: f32) -> Self {
-        self.thing.x = val;
-        self
-    }
-
-    pub fn y(mut self, val: f32) -> Self {
-        self.thing.y = val;
-        self
-    }
-}
-
-struct StopAtBuilder {
-    thing: StopAt,
-}
-
-impl StopAtBuilder {
-    fn new() -> Self {
-        Self{ thing: StopAt{xloc: -102.0}}
-    }
-    fn xloc(mut self, val: f32) -> Self {
-        self.thing.xloc = val;
-        self
-    }
-    fn build(self) -> StopAt {
-        return self.thing
-    }
-}
-
-
-#[derive(Clone)]
+#[derive(Default, Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct SineMovementX {
+    #[builder(default="1.0")]
     frequency: f32,
+    #[builder(default="0")]
     step: i32,
+    #[builder(default="100.0")]
     amplitude: f32,
 }
 
-struct SineMovementXBuilder {
-    thing: SineMovementX,
-}
-
-impl SineMovementXBuilder {
-    fn new() -> Self {
-        SineMovementXBuilder{ thing: SineMovementX{frequency: 1.0, step: 0, amplitude: 0.0} }
-    }
-    fn frequency(mut self, val: f32) -> Self {
-        self.thing.frequency = val;
-        self
-    }
-    fn amplitude(mut self, val: f32) -> Self {
-        self.thing.amplitude = val;
-        self
-    }
-    #[allow(unused)]
-    fn step(mut self, val: i32) -> Self {
-        self.thing.step = val;
-        self
-    }
-
-    fn build(self) -> SineMovementX {
-        return self.thing
-    }
-}
-
-
-
-#[derive(Clone)]
+#[derive(Default, Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct SineMovement {
+    #[builder(default="1.0")]
     frequency: f32,
+    #[builder(default="0")]
     step: i32,
+    #[builder(default="100.0")]
     amplitude: f32,
 }
 
-struct SineMovementBuilder {
-    thing: SineMovement,
-}
-
-impl SineMovementBuilder {
-    fn new() -> Self {
-        SineMovementBuilder{ thing: SineMovement{frequency: 1.0, step: 0, amplitude: 0.0} }
-    }
-    fn frequency(mut self, val: f32) -> Self {
-        self.thing.frequency = val;
-        self
-    }
-    fn amplitude(mut self, val: f32) -> Self {
-        self.thing.amplitude = val;
-        self
-    }
-    #[allow(unused)]
-    fn step(mut self, val: i32) -> Self {
-        self.thing.step = val;
-        self
-    }
-
-    fn build(self) -> SineMovement {
-        return self.thing
-    }
-}
-
-#[derive(Clone)]
+#[derive(Default, Builder, Clone)]
+#[builder(pattern="owned")]
 pub struct ClampY {
+    #[builder(default="0.0")]
     low: f32,
+    #[builder(default="768.0")]
     high: f32,
 }
 
-pub struct ClampYBuilder {
-    thing: ClampY,
-}
-impl ClampYBuilder {
-    fn new() -> Self {
-        Self { thing: ClampY {
-            high: 0.0,
-            low: 0.0,
-        }}
-    }
-
-    fn build(self) -> ClampY {
-        self.thing
-    }
-
-    fn low(mut self, val: f32) -> Self {
-        self.thing.low = val;
-        self
-    }
-
-    fn high(mut self, val: f32) -> Self {
-        self.thing.high = val;
-        self
-    }
-
-}
-
-#[derive(Clone)]
+#[derive(Default, Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct Physical{
+    #[builder(default="0.0")]
     x: f32,
+    #[builder(default="0.0")]
     y: f32,
 
+    #[builder(default="0.0")]
     xvel: f32,
+    #[builder(default="0.0")]
     yvel: f32,
 
+    #[builder(default="0.0")]
     xacc: f32,
+    #[builder(default="0.0")]
     yacc: f32,
 }
 
-#[derive(Clone)]
-struct PhysicalBuilder{
-    thing: Physical,
-}
-
-impl PhysicalBuilder{
-    fn new() -> Self {
-        PhysicalBuilder{ thing: Physical{
-            x:0.0,
-            y:0.0,
-            xvel:0.0,
-            yvel:0.0,
-            xacc: 0.0,
-            yacc: 0.0,
-        }}
-    }
-    fn x(mut self, val: f32) -> Self{
-        self.thing.x = val;
-        self
-    }
-    fn y(mut self, val: f32) -> Self{
-        self.thing.y = val;
-        self
-    }
-    fn xvel(mut self, val: f32) -> Self{
-        self.thing.xvel = val;
-        self
-    }
-    #[allow(unused)]
-    fn yvel(mut self, val: f32) -> Self{
-        self.thing.yvel = val;
-        self
-    }
-
-    fn xacc(mut self, val: f32) -> Self{
-        self.thing.xacc = val;
-        self
-    }
-
-    #[allow(unused)]
-    fn yacc(mut self, val: f32) -> Self{
-        self.thing.xacc = val;
-        self
-    }
-
-    fn build(self) -> Physical {
-        return self.thing;
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct Drawable{
+    #[builder(default="load_texture(\"no-texture.png\".to_string()).unwrap()")]
     texture: Arc<Texture2D>,
+    #[builder(default="0.0")]
     layer: f32,
+    #[builder(default="Color{r:255, g: 255, b:255, a:255}")]
     tint: Color,
 }
 
-struct DrawableBuilder{
-    thing: Drawable,
-}
-
 impl DrawableBuilder {
-    fn new() -> Self {
-        DrawableBuilder{ thing: Drawable{
-            texture: load_texture("no-texture.png".to_string()).unwrap(),
-            layer: 0.1,
-            tint: Color{r:255, g: 255, b:255, a:255},
-        }}
-    }
-    fn layer(mut self, val: f32) -> Self{
-        self.thing.layer = val;
-        self
-    }
     fn texture_by_name(mut self, val: String) -> Self{
-        self.thing.texture = load_texture(val).unwrap();
+        self.texture = Some(load_texture(val).unwrap());
         self
-    }
-
-    fn tint(mut self, val: Color) -> Self{
-        self.thing.tint = val;
-        self
-    }
-
-    fn build(self) -> Drawable {
-        return self.thing;
     }
 }
 
-#[derive(Clone)]
+#[derive(Builder, Clone)]
+#[builder(pattern="owned")]
 pub struct DeathEvent{
+    #[builder( default="load_sound(\"scilence.wav\".to_string()).unwrap()")]
     sound: Arc<Sound>,
+    #[builder( default="Arc::new(Spawner::new())")]
     spawner: Arc<Spawner>,
+    #[builder( default= "0")]
     score_add: i64,
+    #[builder( default= "false")]
     clear_spawn_plan: bool,
 }
 
@@ -344,46 +175,15 @@ impl DeathEvent{
         self.spawner.spawn_at_pos(&mut world, &pos);
         (self.clear_spawn_plan, self.score_add)
     }
-}
 
-struct DeathEventBuilder{
-    thing: DeathEvent,
 }
 
 impl DeathEventBuilder {
-    fn new() -> Self {
-        DeathEventBuilder{ thing: DeathEvent {
-            sound: load_sound("scilence.wav".to_string()).unwrap(),
-            spawner: Arc::new(Spawner::new()),
-            score_add: 0,
-            clear_spawn_plan: false,
-        }}
-    }
-    fn spawner(mut self, val: Arc<Spawner>) -> Self {
-        self.thing.spawner = val;
+    fn sound_by_name(mut self, val: String) -> Self {
+        self.sound = Some( load_sound(val).unwrap());
         self
-    }
-    fn sound_by_name(mut self, val: String) -> Self{
-        self.thing.sound = load_sound(val).unwrap();
-        self
-    }
-
-    fn score_add(mut self, val: i64) -> Self {
-        self.thing.score_add = val;
-        self
-    }
-
-    fn clear_spawn_plan(mut self, val: bool) -> Self {
-        self.thing.clear_spawn_plan = val;
-        self
-    }
-
-    fn build(self) -> DeathEvent  {
-        return self.thing;
     }
 }
-
-
 
 #[derive(Clone)]
 pub struct Collidable{
@@ -399,133 +199,48 @@ pub struct DespawnFarLeft{}
 #[derive(Clone)]
 pub struct DespawnY{}
 
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct AvoidPlayerY{
+    #[builder(default="0.0")]
     speed: f32,
 }
 
-#[derive(Clone)]
-pub struct AvoidPlayerYBuilder {
-    thing: AvoidPlayerY,
-}
-
-impl AvoidPlayerYBuilder {
-    fn new() -> Self {
-        Self{thing:AvoidPlayerY{
-            speed: 0.0,
-        }}
-    }
-
-    fn speed(mut self, val: f32) -> Self {
-        self.thing.speed = val;
-        self
-    }
-
-    fn build(self) -> AvoidPlayerY {
-        self.thing
-    }
-}
-
-
-
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct FollowPlayerY{
+    #[builder(default="0.0")]
     speed: f32,
 }
-
-#[derive(Clone)]
-pub struct FollowPlayerYBuilder {
-    thing: FollowPlayerY,
-}
-
-impl FollowPlayerYBuilder {
-    fn new() -> Self {
-        Self{thing:FollowPlayerY{
-            speed: 0.0,
-        }}
-    }
-
-    fn speed(mut self, val: f32) -> Self {
-        self.thing.speed = val;
-        self
-    }
-
-    fn build(self) -> FollowPlayerY {
-        self.thing
-    }
-}
-
-
 
 #[derive(Clone)]
 pub struct Bullet{
     damage: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct Powerup {
+    #[builder(default="1.0")]
     regen_increase: f32,
+    #[builder(default="1.0")]
     fire_rate_increase: f32,
+    #[builder(default="1.0")]
     fire_damage_increase: f32,
+    #[builder(default="1.0")]
     shield_increase: f32,
+    #[builder( default="load_sound(\"scilence.wav\".to_string()).unwrap()")]
     pickup_sound: Arc<Sound>,
+    #[builder(default="0")]
     shot_increase: i32,
 }
 
-#[derive(Clone)]
-pub struct PowerupBuilder {
-    thing: Powerup,
-}
-
 impl PowerupBuilder {
-    fn new() -> Self {
-        Self { thing: Powerup{
-            regen_increase: 1.0,
-            fire_rate_increase: 1.0,
-            fire_damage_increase: 1.0,
-            shield_increase: 1.0,
-            pickup_sound: load_sound("silence.wav".to_string()).unwrap(),
-            shot_increase: 0,
-        }}
-    }
-
-    #[allow(unused)]
-    fn shot_increase(mut self, val: i32) -> Self {
-        self.thing.shot_increase = val;
-        self
-    }
-
     fn sound_by_name(mut self, val: String) -> Self {
-        self.thing.pickup_sound = load_sound(val).unwrap();
+        self.pickup_sound = Some(load_sound(val).unwrap());
         self
-    }
-
-    fn fire_rate_increase(mut self, val: f32) -> Self{
-        self.thing.fire_rate_increase = val;
-        self
-    }
-
-    fn regen_increase(mut self, val: f32) -> Self{
-        self.thing.regen_increase = val;
-        self
-    }
-
-    fn fire_damage_increase(mut self, val: f32) -> Self{
-        self.thing.fire_damage_increase = val;
-        self
-    }
-
-    fn shield_increase(mut self, val: f32) -> Self{
-        self.thing.shield_increase = val;
-        self
-    }
-
-    fn build(self) -> Powerup {
-        return self.thing;
     }
 }
-
-
 
 const PART_INSTALLED_AT: i32 = (FRAME_RATE * 2.0 ) as i32;
 #[derive(Clone)]
@@ -537,170 +252,94 @@ pub struct PlayerStats {
     install_finish_sound: Arc<Sound>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct Weapon {
+    #[builder(default="1.0")]
+    #[builder(setter(name="skip_"))]
+    #[builder(setter(private))]
     fire_rate: f32,
+    #[builder(default="100.0")]
     fire_velocity: f32,
+    #[builder(default="0")]
+    #[builder(setter(name="gun_cooldown_frames_"))]
+    #[builder(setter(private))]
     gun_cooldown_frames : i32,
+    #[builder(default="Arc::new(PrefabBuilder::new().build())")]
+    #[builder(setter(name="prefab_"))]
+    #[builder(setter(private))]
     prefab : Arc<Prefab>,
+    #[builder(default="1")]
     pattern: i32,
 
+    #[builder(default="1.0")]
     direction: f32,
+    #[builder(default="40.0")]
     offset: f32,
+    #[builder( default="None")]
+    #[builder(setter(name="fire_sound_"))]
+    #[builder(setter(private))]
     fire_sound: Option<Arc<Sound>>,
+    #[builder(default="90.0")]
     fire_angle: f32,
 }
 
-#[derive(Clone)]
-pub struct WeaponBuilder{
-    thing: Weapon,
-}
-
 impl WeaponBuilder {
-    fn new() -> Self {
-        WeaponBuilder{ thing: Weapon{
-            fire_rate: 1.0,
-            fire_velocity: 0.1,
-            gun_cooldown_frames: 0,
-            prefab: Arc::new(PrefabBuilder::new().build()),
-            direction: 1.0,
-            offset: 40.0,
-            pattern: 1,
-            fire_sound: None,
-            fire_angle: 90.0,
-        }}
-    }
-
-    fn fire_angle(mut self, val: f32) -> Self {
-        self.thing.fire_angle = val;
-        self
-    }
-
     fn fire_sound(mut self, val: String) -> Self{
-        self.thing.fire_sound = load_sound(val);
-        self
-    }
-
-    fn pattern(mut self, val: i32) -> Self{
-        self.thing.pattern = val;
+        self.fire_sound = Some(load_sound(val));
         self
     }
 
     fn fire_rate(mut self, val: f32) -> Self{
-        self.thing.fire_rate = val * FRAME_RATE;
-        self
-    }
-
-    fn fire_velocity(mut self, val: f32) -> Self{
-        self.thing.fire_velocity = val;
+        self.fire_rate = Some(val * FRAME_RATE);
         self
     }
 
     fn gun_cooldown_frames(mut self, val: f32) -> Self{
-        self.thing.gun_cooldown_frames = (val * FRAME_RATE) as i32;
+        self.gun_cooldown_frames = Some((val * FRAME_RATE) as i32);
         self
     }
 
     fn prefab(mut self, val: Prefab) -> Self{
-        self.thing.prefab = Arc::new(val);
+        self.prefab = Some(Arc::new(val));
         self
     }
-
-    fn offset(mut self, val: f32) -> Self{
-        self.thing.offset = val;
-        self
-    }
-
-    fn build(self) -> Weapon {
-        return self.thing;
-    }
-
 }
 
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct BossHealthDraw {
 }
 
-pub struct BossHealthDrawBuilder {
-    thing: BossHealthDraw,
-}
-
-impl BossHealthDrawBuilder {
-    fn new() -> Self {
-        Self {
-            thing: BossHealthDraw{},
-        }
-    }
-
-    fn build(self) -> BossHealthDraw {
-        self.thing
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct TimeoutDeath{
+    #[builder(default="0")]
     ticks: i32,
 }
 
-pub struct TimeoutDeathBuilder {
-    thing: TimeoutDeath,
-}
-
-impl TimeoutDeathBuilder {
-    fn new() -> Self {
-        Self{ thing: TimeoutDeath{
-            ticks: 0,
-        }}
-    }
-
-    fn ticks(mut self, val: i32) -> Self{
-        self.thing.ticks = val;
-        self
-    }
-
-    fn build(self) -> TimeoutDeath {
-        return self.thing;
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Builder)]
+#[builder(pattern="owned")]
 pub struct Shield {
+    #[builder(default="1.0")]
     max_shield: f32,
+    #[builder(default="1.0")]
+    #[builder(setter(name="ammount_"))]
+    #[builder(setter(private))]
     ammount: f32,
+    #[builder(default="0.0")]
     regen: f32,
 }
 
-#[derive(Clone)]
-pub struct ShieldBuilder {
-    thing: Shield,
-}
-
 impl ShieldBuilder {
-    fn new() -> Self {
-        Self{ thing: Shield{
-            max_shield: 10.0,
-            ammount: 10.0,
-            regen: 0.0,
-        }}
-    }
-    #[allow(unused)]
-    fn max_shield(mut self, val: f32) -> Self{
-        self.thing.max_shield = val;
-        self
-    }
-
     fn ammount(mut self, val: f32) -> Self{
-        self.thing.ammount = val;
-        self.thing.max_shield = max_float(self.thing.max_shield, val);
+        self.ammount = Some(val);
+        if let Some(max_shield) = self.max_shield {
+            self.max_shield = Some(max_float(max_shield, val));
+        } else {
+            self.max_shield = Some(val);
+        }
         self
-    }
-
-    fn regen(mut self, val: f32) -> Self{
-        self.thing.regen = val;
-        self
-    }
-    fn build(self) -> Shield {
-        return self.thing;
     }
 }
 
@@ -1014,10 +653,10 @@ impl GameData {
         for i in 0..std::cmp::min(4, cargo.len()){
 
             let mut prefab = cargo[i].clone();
-            prefab.physical = Some(PhysicalBuilder::new()
+            prefab.physical = Some(PhysicalBuilder::default()
                 .x(1250.0)
                 .y(i as f32 *50.0+200.0)
-                .build());
+                .build().unwrap());
 
             let id = prefab.spawn(&mut self.world);
             self.world.destroy_later(id);
