@@ -106,6 +106,7 @@ impl Prefab {
     }
 }
 
+
 #[derive(Clone)]
 /// Helper for building a prefab
 pub struct PrefabBuilder {
@@ -131,6 +132,38 @@ impl PrefabBuilder{
     pub fn build(self) -> Prefab {
         return self.thing
     }
+}
+
+
+impl rlua::UserData for Prefab{
+    fn add_methods(_methods: &mut rlua::UserDataMethods<Self>){}
+}
+
+pub fn register_ecs(lua: &rlua::Lua) -> std::result::Result<(), rlua::Error>{
+    let fun = lua.create_function::<_, Prefab, _>(
+        |_, table: rlua::Table| -> _ {
+            let mut builder = PrefabBuilder::new();
+            $(
+            match table.get::<&str, rlua::Value>(stringify!($name)) {
+                Ok(val) => {
+                    match val {
+                        rlua::Value::Table(ref dat) => {
+                            builder = builder.$name(<$type>::from_table(dat));
+                        },
+                        rlua::Value::Nil => {},
+                        _ => print!("bad value when loading {}: {:?}\n", stringify!($name), val),
+                    }
+                }
+                Err(e) => {
+                    print!("error {:?}\n", e);
+                }
+            }
+            )+
+            Ok(builder.build())
+        })?;
+    lua.globals().set("Prefab", fun).unwrap();
+
+    return Ok(());
 }
 
 }} //end of macro definition

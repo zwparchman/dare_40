@@ -14,6 +14,7 @@ use std::ptr;
 use std::f32;
 use std;
 
+use rlua;
 
 pub use self::raylib_raw::Color;
 pub use self::raylib_raw::Image;
@@ -21,6 +22,20 @@ pub use self::raylib_raw::Texture2D;
 pub use self::raylib_raw::Rectangle;
 pub use self::raylib_raw::Sound;
 
+impl Color {
+    pub fn new(r: u8, g: u8, b: u8, a:u8) -> Self {
+        Self {
+            r: r,
+            g: g,
+            b: b,
+            a: a,
+        }}
+}
+
+impl rlua::UserData for Color {
+    fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
+    }
+}
 ////////////////////////////////////////////////////////////
 // Audio stuff
 #[derive(Clone)]

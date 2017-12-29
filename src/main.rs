@@ -3,14 +3,12 @@
 // `cached!` macro requires the `lazy_static!` macro
 #[macro_use] extern crate lazy_static;
 
-#[macro_use] extern crate derive_builder;
-
-// extern crate hibitset;
 extern crate quickersort;
 extern crate nalgebra;
 extern crate rand;
 extern crate hibitset;
 extern crate pretty_env_logger;
+extern crate rlua;
 
 use std::f32;
 
@@ -71,175 +69,274 @@ fn min_float(a: f32, b: f32) -> f32 {
     }
 }
 
-#[derive(Default, Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct Drag {
-    #[builder(default="0.0")]
-    x: f32,
-    #[builder(default="0.0")]
-    y: f32,
-}
-
-#[derive(Default, Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct StopAt {
-    #[builder(default="-102.0")]
-    xloc: f32,
-}
-
-#[derive(Default, Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct SineMovementX {
-    #[builder(default="1.0")]
-    frequency: f32,
-    #[builder(default="0")]
-    step: i32,
-    #[builder(default="100.0")]
-    amplitude: f32,
-}
-
-#[derive(Default, Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct SineMovement {
-    #[builder(default="1.0")]
-    frequency: f32,
-    #[builder(default="0")]
-    step: i32,
-    #[builder(default="100.0")]
-    amplitude: f32,
-}
-
-#[derive(Default, Builder, Clone)]
-#[builder(pattern="owned")]
-pub struct ClampY {
-    #[builder(default="0.0")]
-    low: f32,
-    #[builder(default="768.0")]
-    high: f32,
-}
-
-#[derive(Default, Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct Physical{
-    #[builder(default="0.0")]
-    x: f32,
-    #[builder(default="0.0")]
-    y: f32,
-
-    #[builder(default="0.0")]
-    xvel: f32,
-    #[builder(default="0.0")]
-    yvel: f32,
-
-    #[builder(default="0.0")]
-    xacc: f32,
-    #[builder(default="0.0")]
-    yacc: f32,
-}
-
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
-pub struct Drawable{
-    #[builder(default="load_texture(\"no-texture.png\".to_string()).unwrap()")]
-    texture: Arc<Texture2D>,
-    #[builder(default="0.0")]
-    layer: f32,
-    #[builder(default="Color{r:255, g: 255, b:255, a:255}")]
-    tint: Color,
-}
-
-impl DrawableBuilder {
-    fn texture_by_name(mut self, val: String) -> Self{
-        self.texture = Some(load_texture(val).unwrap());
-        self
+macro_rules! from_lua_implimenter {
+    ($type: ty,  $(($name: ident $default: expr),)*) => {
+        impl FromLuaTable for $type {
+            fn from_table(table: &rlua::Table) -> Self {
+                Self {
+                    $(
+                    $name: table.get(stringify!($name)).unwrap_or($default),
+                    )*
+                }
+            }
+        }
     }
 }
 
-#[derive(Builder, Clone)]
-#[builder(pattern="owned")]
+fn register_weighted(lua: &rlua::Lua) -> Result<(), rlua::Error> {
+    let fun = lua.create_function(
+        |_, (_table, _count): (rlua::Table, i64)| -> Result<Vec<rlua::Value>, rlua::Error> {
+            /*
+            let mut weights: Vec<Weighted<rlua::Value>> = vec![];
+            for pair in table.pairs() {
+                let (_,v): (i64, rlua::Value) = pair?;
+                if let rlua::Value::Table(tab) = v.clone() {
+                    if let Ok(weight) = tab.get::<_, i64>("weight") {
+                        weights.push(
+                            Weighted{weight: weight.clone() as u32, item: v.clone()}
+                        );
+                    }
+                }
+            }
+
+            //construct the return vector
+            let chooser = WeightedChoice::new(&mut weights);
+            let mut ret = vec![];
+            use rand::Rng;
+            let seed = vec![rand::thread_rng().gen::<u64>()];
+            let rng = rand::isaac::Isaac64Rng::from_seed(&seed);
+            for _ in 0..count {
+                ret.push(chooser.ind_sample(&mut rng));
+            }
+
+            Ok(ret)
+            */
+            Err(rlua::Error::RuntimeError("TBI".to_string()))
+        }
+    )?;
+    lua.globals().set("get_weighted_n", fun).unwrap();
+    Ok(())
+}
+
+
+struct StateWrapper{
+    rstate: Mutex<rlua::Lua>,
+}
+
+impl StateWrapper {
+    fn new() -> StateWrapper {
+        StateWrapper {
+            rstate: Mutex::new(rlua::Lua::new())
+        }
+    }
+
+    fn lock(&self ) -> LockResult<MutexGuard<rlua::Lua>> {
+        self.rstate.lock()
+    }
+
+    #[allow(unused)]
+    fn try_lock(&self) -> TryLockResult<MutexGuard<rlua::Lua>> {
+        self.rstate.try_lock()
+    }
+}
+unsafe impl std::marker::Sync for StateWrapper{}
+unsafe impl std::marker::Send for StateWrapper{}
+
+
+#[derive(Default, Clone)]
+pub struct Drag {
+    x: f32,
+    y: f32,
+}
+from_lua_implimenter!(Drag, (x 0.0), (y 0.0),);
+
+
+#[derive(Default, Clone)]
+pub struct StopAt {
+    xloc: f32,
+}
+from_lua_implimenter!(StopAt, (xloc 0.0),);
+
+
+#[derive(Default, Clone)]
+pub struct SineMovementX {
+    frequency: f32,
+    step: i32,
+    amplitude: f32,
+}
+from_lua_implimenter!(SineMovementX, (frequency 1.0), (step 0), (amplitude 100.0),);
+
+#[derive(Default, Clone)]
+pub struct SineMovement {
+    frequency: f32,
+    step: i32,
+    amplitude: f32,
+}
+from_lua_implimenter!(SineMovement, (frequency 1.0), (step 0), (amplitude 100.0),);
+
+
+#[derive(Default, Clone)]
+pub struct ClampY {
+    low: f32,
+    high: f32,
+}
+from_lua_implimenter!(ClampY, (low 0.0), (high 768.0),);
+
+#[derive(Default, Clone)]
+pub struct Physical{
+    x: f32,
+    y: f32,
+
+    xvel: f32,
+    yvel: f32,
+
+    xacc: f32,
+    yacc: f32,
+}
+from_lua_implimenter!(Physical,
+                      (x 0.0),
+                      (y 0.0),
+                      (xvel 0.0),
+                      (yvel 0.0),
+                      (xacc 0.0),
+                      (yacc 0.0),);
+
+#[derive(Clone)]
+pub struct Drawable{
+    texture: TextureHandle,
+    layer: f32,
+    tint: Color,
+}
+from_lua_implimenter!(Drawable,
+                      (texture TextureHandle::from_file_str("no-texture.png")),
+                      (layer 0.0),
+                      (tint Color{r:255, g:255, b:255, a:255}),);
+
+#[derive(Clone)]
+struct SoundHandle {
+    val: Option<Arc<Sound>>,
+}
+
+fn register_sound(lua: &rlua::Lua) -> Result<(), rlua::Error> {
+    let fun = lua.create_function(
+        |_, table: rlua::Table| -> Result<SoundHandle, rlua::Error> {
+            if let Ok(fname) = table.get::<&str, String>("file") {
+                return Ok(SoundHandle::from_file_string(fname));
+            } 
+            return Ok(SoundHandle::none());
+        }
+    )?;
+    lua.globals().set("Sound", fun).unwrap();
+    Ok(())
+}
+
+impl rlua::UserData for SoundHandle {
+    fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
+    }
+}
+
+impl SoundHandle {
+    fn none() -> Self {
+        Self { val: None, }
+    }
+
+    fn from_file_string(fname: String) -> Self {
+        Self {
+            val: load_sound(fname),
+        }
+    }
+
+    #[allow(unused)]
+    fn from_file_str(fname: &str) -> Self {
+        Self {
+            val: load_sound(fname.to_string()),
+        }
+    }
+
+    fn play(&self) {
+        if let Some(ref val) = self.val {
+            PlaySound(&*val);
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct DeathEvent{
-    #[builder( default="load_sound(\"scilence.wav\".to_string()).unwrap()")]
-    sound: Arc<Sound>,
-    #[builder( default="Arc::new(Spawner::new())")]
+    sound: SoundHandle,
     spawner: Arc<Spawner>,
-    #[builder( default= "0")]
     score_add: i64,
-    #[builder( default= "false")]
     clear_spawn_plan: bool,
+}
+
+impl FromLuaTable for DeathEvent {
+    fn from_table(table: &rlua::Table) -> Self {
+        Self {
+            sound: table.get("sound").unwrap_or(SoundHandle::none()),
+            spawner: Arc::new( table.get("spawner").unwrap_or(Spawner::new()) ),
+            score_add: table.get("score_add").unwrap_or(0),
+            clear_spawn_plan: table.get("clear_spawn_plan").unwrap_or(false),
+        }
+    }
 }
 
 impl DeathEvent{
     fn die(&self, mut world: &mut EcsWorld, pos: &Physical) -> ( bool, i64) {
-        PlaySound(&self.sound);
+        &self.sound.play();
         self.spawner.spawn_at_pos(&mut world, &pos);
         (self.clear_spawn_plan, self.score_add)
     }
 
 }
 
-impl DeathEventBuilder {
-    fn sound_by_name(mut self, val: String) -> Self {
-        self.sound = Some( load_sound(val).unwrap());
-        self
-    }
-}
-
 #[derive(Clone)]
 pub struct Collidable{
     radius: f32,
 }
+from_lua_implimenter!(Collidable, (radius 0.0),);
 
 #[derive(Clone)]
 pub struct PlayerControl{}
 #[derive(Clone)]
 pub struct DespawnFarRight{}
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DespawnFarLeft{}
 #[derive(Clone)]
 pub struct DespawnY{}
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct AvoidPlayerY{
-    #[builder(default="0.0")]
     speed: f32,
 }
+from_lua_implimenter!(AvoidPlayerY, (speed 0.0),);
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct FollowPlayerY{
-    #[builder(default="0.0")]
     speed: f32,
 }
+from_lua_implimenter!(FollowPlayerY, (speed 0.0),);
 
 #[derive(Clone)]
 pub struct Bullet{
     damage: f32,
 }
+from_lua_implimenter!(Bullet, (damage 1.0),);
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct Powerup {
-    #[builder(default="1.0")]
     regen_increase: f32,
-    #[builder(default="1.0")]
     fire_rate_increase: f32,
-    #[builder(default="1.0")]
     fire_damage_increase: f32,
-    #[builder(default="1.0")]
     shield_increase: f32,
-    #[builder( default="load_sound(\"scilence.wav\".to_string()).unwrap()")]
-    pickup_sound: Arc<Sound>,
-    #[builder(default="0")]
+    pickup_sound: SoundHandle,
     shot_increase: i32,
 }
-
-impl PowerupBuilder {
-    fn sound_by_name(mut self, val: String) -> Self {
-        self.pickup_sound = Some(load_sound(val).unwrap());
-        self
-    }
-}
+from_lua_implimenter!(Powerup,
+    ( regen_increase 1.0 ),
+    ( fire_rate_increase 1.0 ),
+    ( fire_damage_increase 1.0 ),
+    ( shield_increase 1.0 ),
+    ( pickup_sound SoundHandle::none() ),
+    ( shot_increase 0 ),);
 
 const PART_INSTALLED_AT: i32 = (FRAME_RATE * 2.0 ) as i32;
 #[derive(Clone)]
@@ -248,97 +345,80 @@ pub struct PlayerStats {
     base_speed: f32,
     owned: Vec<Prefab>,
     install_progress: i32,
-    install_finish_sound: Arc<Sound>,
+    install_finish_sound: SoundHandle,
 }
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+from_lua_implimenter!(PlayerStats,
+    ( movement_speed 0.0 ),
+    ( base_speed 0.0 ),
+    ( owned vec![]),
+    ( install_progress 0 ),
+    ( install_finish_sound SoundHandle::none() ),);
+
+
+#[derive(Clone)]
 pub struct Weapon {
-    #[builder(default="1.0")]
-    #[builder(setter(name="skip_"))]
-    #[builder(setter(private))]
     fire_rate: f32,
-    #[builder(default="100.0")]
     fire_velocity: f32,
-    #[builder(default="0")]
-    #[builder(setter(name="gun_cooldown_frames_"))]
-    #[builder(setter(private))]
     gun_cooldown_frames : i32,
-    #[builder(default="Arc::new(PrefabBuilder::new().build())")]
-    #[builder(setter(name="prefab_"))]
-    #[builder(setter(private))]
     prefab : Arc<Prefab>,
-    #[builder(default="1")]
     pattern: i32,
 
-    #[builder(default="1.0")]
     direction: f32,
-    #[builder(default="40.0")]
     offset: f32,
-    #[builder( default="None")]
-    #[builder(setter(name="fire_sound_"))]
-    #[builder(setter(private))]
-    fire_sound: Option<Arc<Sound>>,
-    #[builder(default="90.0")]
+    fire_sound: SoundHandle,
     fire_angle: f32,
 }
 
-impl WeaponBuilder {
-    fn fire_sound(mut self, val: String) -> Self{
-        self.fire_sound = Some(load_sound(val));
-        self
-    }
-
-    fn fire_rate(mut self, val: f32) -> Self{
-        self.fire_rate = Some(val * FRAME_RATE);
-        self
-    }
-
-    fn gun_cooldown_frames(mut self, val: f32) -> Self{
-        self.gun_cooldown_frames = Some((val * FRAME_RATE) as i32);
-        self
-    }
-
-    fn prefab(mut self, val: Prefab) -> Self{
-        self.prefab = Some(Arc::new(val));
-        self
+impl FromLuaTable for Weapon {
+    fn from_table(table: &rlua::Table) -> Self {
+        Self {
+            fire_rate: FRAME_RATE * table.get("fire_rate").unwrap_or(10.0),
+            fire_velocity: table.get("fire_velocity").unwrap_or(100.0),
+            gun_cooldown_frames: (FRAME_RATE * table.get("gun_cooldown_frames").unwrap_or(0) as f32) as i32,
+            prefab: Arc::new( table.get("prefab").unwrap_or(PrefabBuilder::new().build())),
+            pattern: table.get("pattern").unwrap_or(1),
+            direction: table.get("direction").unwrap_or(1.0),
+            offset: table.get("offset").unwrap_or(0.0),
+            fire_sound: table.get("fire_sound").unwrap_or(SoundHandle::none()),
+            fire_angle: table.get("fire_angle").unwrap_or(90.0),
+        }
     }
 }
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct BossHealthDraw {
 }
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct TimeoutDeath{
-    #[builder(default="0")]
     ticks: i32,
 }
+impl FromLuaTable for TimeoutDeath {
+    fn from_table(table: &rlua::Table) -> Self {
+        Self {
+            ticks: (table.get::<_,f32>("time").unwrap_or(0.0) * FRAME_RATE ) as i32
+        }
+    }
+}
 
-#[derive(Clone, Builder)]
-#[builder(pattern="owned")]
+#[derive(Clone)]
 pub struct Shield {
-    #[builder(default="1.0")]
     max_shield: f32,
-    #[builder(default="1.0")]
-    #[builder(setter(name="ammount_"))]
-    #[builder(setter(private))]
     ammount: f32,
-    #[builder(default="0.0")]
     regen: f32,
 }
 
-impl ShieldBuilder {
-    fn ammount(mut self, val: f32) -> Self{
-        self.ammount = Some(val);
-        if let Some(max_shield) = self.max_shield {
-            self.max_shield = Some(max_float(max_shield, val));
-        } else {
-            self.max_shield = Some(val);
+impl FromLuaTable for Shield {
+    fn from_table(table: &rlua::Table) -> Self {
+        let ammount = table.get("ammount").unwrap_or(1.0);
+        let max_shield = table.get("max_shield").unwrap_or(ammount);
+        let regen = table.get("regen").unwrap_or(0.0);
+        Self {
+            ammount: ammount,
+            max_shield: max_shield,
+            regen: regen,
         }
-        self
     }
 }
 
@@ -350,6 +430,7 @@ pub struct Install{}
 
 #[derive(Clone)]
 pub struct Team{team: i32}
+from_lua_implimenter!(Team, (team -1),);
 
 
 pub struct GameData{
@@ -364,11 +445,14 @@ pub struct GameData{
     score: i64,
     paused: bool,
 
+    state: StateWrapper,
+
+    #[allow(unused)]
     rng: rand::isaac::Isaac64Rng,
 }
 
 impl GameData {
-    fn new() -> Self {
+    fn new(state: StateWrapper) -> Self {
         use rand::Rng;
         use rand::SeedableRng;
         let seed = rand::thread_rng().gen::<u64>();
@@ -384,21 +468,19 @@ impl GameData {
             // rng: rand::isaac::Isaac64Rng::from_seed(&[1,2,3]),
             rng: rand::isaac::Isaac64Rng::from_seed(&[seed]),
             paused: false,
+            state: state,
         }
     }
 
     fn spawn_stars(&mut self){
         self.star_spawner.execute(self.frame_count, &mut self.world);
         if self.star_spawner.is_empty() {
-            self.star_spawner = gen_star_spawner(self.frame_count , &mut self.rng);
+            let locked = self.state.lock().unwrap();
+            self.star_spawner = gen_star_spawner2(self.frame_count, &locked);
         }
     }
 
     fn spawn_main(&mut self){
-        let did_spawn = self.spawn_plan.execute(self.frame_count, &mut self.world);
-        if did_spawn {
-            trace!("Spawned main on  frame {}", self.frame_count);
-        }
 
         if self.spawn_plan.is_empty() {
             trace!("Creating new main spawn plan on frame:{} difficulty: {} wave: {}", self.frame_count, self.difficulty, self.wave);
@@ -406,24 +488,35 @@ impl GameData {
             self.difficulty += 3.0 * player_shield_fraction;
             self.wave += 1;
             if self.wave == 20 {
-                self.difficulty += 20.0;
-                self.spawn_plan = gen_boss_1_level(self.difficulty,
-                                                   500.0,
-                                                   self.frame_count ,
-                                                   &mut self.rng);
+                let lua = self.state.lock().unwrap();
+                self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
+                                                             self.difficulty,
+                                                             5.0 * FRAME_RATE,
+                                                             "gen_boss_1_level",
+                                                             &*lua);
+
             } else if self.wave == 40 {
                 self.difficulty *= 1.5;
-                self.spawn_plan = gen_boss_2_level(self.difficulty,
-                                                   500.0,
-                                                   self.frame_count ,
-                                                   &mut self.rng);
+                let lua = self.state.lock().unwrap();
+                self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
+                                                             self.difficulty,
+                                                             5.0 * FRAME_RATE,
+                                                             "gen_boss_2_level",
+                                                             &*lua);
 
             } else {
-                self.spawn_plan = gen_level(self.difficulty,
-                                            10.0 * FRAME_RATE,
-                                            self.frame_count ,
-                                            &mut self.rng);
+                let lua = self.state.lock().unwrap();
+                self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
+                                                             self.difficulty,
+                                                             5.0 * FRAME_RATE,
+                                                             "gen_level",
+                                                             &*lua);
             }
+        }
+
+        let did_spawn = self.spawn_plan.execute(self.frame_count, &mut self.world);
+        if did_spawn {
+            trace!("Spawned main on  frame {}", self.frame_count);
         }
     }
 
@@ -433,6 +526,15 @@ impl GameData {
 
         if IsKeyPressed(KEY_P) {
             self.paused = ! self.paused;
+        }
+
+        if IsKeyPressed(KEY_F10) {
+            match load_config("src/config.lua") {
+                Some(state) => {
+                    self.state = state;
+                }
+                _ => {}
+            }
         }
 
         if ! self.paused {
@@ -593,15 +695,19 @@ impl GameData {
             if fire {
                 let mut weapon = self.world.weapon_list.get(id as IDType).unwrap().clone();
                 let phy1 = self.world.physical_list.get(id as IDType).unwrap().clone();
-                if let Some(sound) = weapon.fire_sound.clone() {
-                    PlaySound(&*sound);
-                }
+                weapon.fire_sound.play();
                 weapon.gun_cooldown_frames = weapon.fire_rate as i32;
 
                 for angle in get_shot_angles(weapon.fire_angle, pattern) {
                     let bul_id = prefab.spawn(&mut self.world);
 
-                    let mut bul_phy = self.world.physical_list.get(bul_id).unwrap().clone();
+                    let mut bul_phy;
+                    if let Some(bul_phy2) = self.world.physical_list.get(bul_id) {
+                        bul_phy = bul_phy2.clone();
+                    } else {
+                        print!("Error, bullet_phy does not exist for id {}\n", bul_id);
+                        continue;
+                    }
 
                     bul_phy.xvel = (DEG2RAD as f32 * angle).cos() *  weapon.fire_velocity;
                     bul_phy.yvel = (DEG2RAD as f32 * angle).sin() *  weapon.fire_velocity;
@@ -620,7 +726,7 @@ impl GameData {
             let drw = self.world.drawable_list.get(id).unwrap();
             let pos = self.world.physical_list.get(id).unwrap();
 
-            let txt = drw.texture;
+            let txt = drw.texture.val;
             let src_rect = Rectangle {x:0, y:0, width:txt.width, height:txt.height};
             let dst_rect = Rectangle {
                 x: (pos.x - (txt.width / 2) as f32) as i32,
@@ -652,10 +758,12 @@ impl GameData {
         for i in 0..std::cmp::min(4, cargo.len()){
 
             let mut prefab = cargo[i].clone();
-            prefab.physical = Some(PhysicalBuilder::default()
-                .x(1250.0)
-                .y(i as f32 *50.0+200.0)
-                .build().unwrap());
+            prefab.physical = Some({
+                let mut phy = Physical::default();
+                phy.x = 1250.0;
+                phy.y = i as f32 * 50.0 + 200.0;
+                phy
+            });
 
             let id = prefab.spawn(&mut self.world);
             self.world.destroy_later(id);
@@ -756,7 +864,7 @@ impl GameData {
             prefab.physical = None;
             stats.owned.push(prefab);
 
-            PlaySound(&*power.pickup_sound);
+            power.pickup_sound.play();
             self.world.destroy_later(b);
 
             self.world.player_stats_list.add(a, stats);
@@ -794,7 +902,7 @@ impl GameData {
 
             if stats.install_progress >= PART_INSTALLED_AT {
                 stats.install_progress = 0;
-                PlaySound(&*stats.install_finish_sound);
+                stats.install_finish_sound.play();
                 let upgrade_prefab = stats.owned[0].clone();
                 stats.install_progress == 0;
 
@@ -1135,8 +1243,91 @@ fn get_shot_angles(angle: f32, count: i32) -> Vec<f32> {
     return ret;
 }
 
+fn do_file(state: &rlua::Lua, fname: &str) -> std::result::Result<(), rlua::Error> {
+    let mut file = std::fs::File::open(fname).unwrap();
+    let mut data = String::new();
+    use std::io::Read;
+    let _ = file.read_to_string(&mut data);
+
+    state.eval::<()>(data.as_str(), Some(fname))
+}
+
+trait FromLuaTable {
+    fn from_table(table: &rlua::Table) -> Self;
+}
+macro_rules! dumb_impl_userdata {
+    ($($type: ty,)+) => {
+        $(
+        impl FromLuaTable for $type {
+            fn from_table(_table: &rlua::Table) -> Self{
+                Self{}
+            }
+        })+
+    }
+}
+
+dumb_impl_userdata!(DespawnFarLeft,
+                    DespawnFarRight,
+                    DespawnY,
+                    BossHealthDraw,
+                    AutoFire,
+                    PlayerControl,
+                    Install,
+                    );
+
+fn load_config( fname: &str) -> Option<StateWrapper> {
+    let state = StateWrapper::new();
+    let good; 
+    {
+        let locked = state.lock().unwrap();
+        register_sound(&locked).unwrap();
+        register_weighted(&locked).unwrap();
+        register_level_gen(&locked).unwrap();
+        register_ecs(&locked).unwrap();
+
+
+        match do_file(&locked, fname) {
+            Ok(_) => {
+                good = true;
+                trace!("config loaded sucessfully");
+            },
+            Err(e) => {
+                good = false;
+                error!("config load failed: {}", e);
+            },
+        }
+    }
+    if good {
+        return Some(state);
+    } else {
+        return None;
+    }
+}
+
 fn main(){
     pretty_env_logger::init().unwrap();
+
+    let state;
+    match load_config("src/config.lua") {
+        Some(val) => {
+            state = val;
+        },
+        None => {
+            error!("Can not start the program without a valid config, aborting");
+            std::process::exit(1);
+        }
+    }
+
+    let h: f32;
+    let w: f32;
+    {
+        let locked = state.lock().unwrap();
+
+        h = locked.globals().get("window_height").unwrap();
+        w = locked.globals().get("window_width").unwrap();
+    }
+
+
     {
         //raylib configuration flags
         #[allow(unused_mut)]
@@ -1151,13 +1342,13 @@ fn main(){
         SetConfigFlags(flags);
     }
 
-    InitWindow(1300, 750, "Dodgem");
+    InitWindow(w as i32, h as i32, "Dodgem");
     InitAudioDevice();
     SetTargetFPS(FRAME_RATE as i32);
 
-    let mut gl = GameData::new();
+    let mut gl = GameData::new(state);
 
-    gl.spawn_plan = gen_level(10.0, FRAME_RATE*4.0, 0, &mut gl.rng);
+    //gl.spawn_plan = gen_level(10.0, FRAME_RATE*4.0, 0, &mut gl.rng);
 
 
     while ! WindowShouldClose() {
