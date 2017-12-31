@@ -760,9 +760,17 @@ impl GameData {
 
     fn draw(&mut self){
         let mask = self.world.drawable_list.mask.clone() & self.world.physical_list.mask.clone();
+        let mut to_draw = vec![];
         for id in mask {
+            to_draw.push((id, self.world.drawable_list.get(id as IDType).unwrap()));
+        }
+
+        quickersort::sort_by_key(&mut to_draw, |tup| { (tup.1.layer * 1000.0) as i64  });
+
+        for (id, _drw) in to_draw {
             self.draw_by_id(id as IDType);
         }
+
         //draw UI
         //
         //draw shields

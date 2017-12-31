@@ -665,6 +665,7 @@ function text_floater(x,y,text)
             texture = Texture {
                 text = text,
             },
+            layer = -1,
         },
         despawn_far_left = {
             at = -400,
@@ -808,7 +809,7 @@ function gen_star_spawner(start_frame)
         local ltint = Color{ r=color_byte, g=color_byte, b=color_byte, a=color_byte}
         return {
             drawable = {
-                layer = 0.0,
+                layer = -4,
                 texture = Texture{ file = "background_star.png" },
                 tint = ltint,
             },
