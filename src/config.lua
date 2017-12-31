@@ -822,14 +822,14 @@ function gen_star_spawner(start_frame)
         }
     end
 
-    local density = 1
-    local to_spawn = 1000
+    local density = 2
+    local to_spawn = 400
 
     local cur_frame = start_frame
     local plan = SpawnPlan()
 
     if start_frame == 0 then
-        to_spawn = 50
+        to_spawn = window_width / density
     end
 
     local spawner = Spawner()
