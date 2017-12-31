@@ -745,7 +745,6 @@ impl GameData {
             let src_rect = Rectangle {x:0, y:0, width:txt.raw.width, height:txt.raw.height};
             let dst_rect = Rectangle {
                 x: (pos.x - (txt.raw.width / 2) as f32) as i32,
-                // x: pos.x as i32,
                 y: (pos.y - (txt.raw.height / 2) as f32) as i32,
                 width: (txt.raw.width) as i32,
                 height: (txt.raw.height) as i32
