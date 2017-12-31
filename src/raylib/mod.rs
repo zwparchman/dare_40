@@ -18,7 +18,7 @@ use rlua;
 
 pub use self::raylib_raw::Color;
 pub use self::raylib_raw::Image;
-pub use self::raylib_raw::Texture2D;
+// pub use self::raylib_raw::Texture2D;
 pub use self::raylib_raw::Rectangle;
 pub use self::raylib_raw::Sound;
 
@@ -95,10 +95,29 @@ impl ops::Drop for Image{
     }
 }
 
+impl ops::Drop for Texture2D {
+    fn drop(&mut self){
+        UnloadTexture(self);
+    }
+}
+
 impl Clone for Image{
     fn clone(&self) -> Image {
         let ret = ImageCopy(self);
         return ret;
+    }
+}
+
+#[derive(Debug)]
+pub struct Texture2D{
+    pub raw: raylib_raw::Texture2D,
+}
+
+impl Clone for Texture2D {
+    fn clone(&self) -> Self {
+        Self{
+            raw:self.raw.clone(),
+        }
     }
 }
 
@@ -312,7 +331,7 @@ pub fn DrawText(text: &str, x: i32, y: i32, font_size: i32, color:Color){
 pub fn DrawTextureEx(texture : Texture2D, pos: Vector2f, rot: f32, scale: f32, color: Color){
     let vec = raylib_raw::Vector2 { x: pos.x, y: pos.y };
     unsafe{
-        raylib_raw::DrawTextureEx(texture, vec, rot, scale, color);
+        raylib_raw::DrawTextureEx(texture.raw, vec, rot, scale, color);
     }
 }
 
@@ -323,7 +342,7 @@ pub fn DrawTexturePro(texture: &Texture2D, sourceRec: Rectangle,
                       tint: Color){
     unsafe{
         let vec = raylib_raw::Vector2 { x:origin.x, y:origin.y };
-        let base = texture as *const Texture2D;
+        let base = (&texture.raw) as *const raylib_raw::Texture2D;
         let raw = ptr::read(base);
         raylib_raw::DrawTexturePro(raw, sourceRec, destRec, vec,
                                    rotation, tint);
@@ -365,7 +384,7 @@ pub fn IsKeyReleased(key: ::std::os::raw::c_int) -> bool {
 pub fn LoadTexture( fname: &str) -> Texture2D{
     unsafe{
         let name_c = CString::new(fname).unwrap();
-        return raylib_raw::LoadTexture( name_c.as_ptr() );
+        return Texture2D{ raw:raylib_raw::LoadTexture( name_c.as_ptr() )};
     }
 }
 
@@ -375,11 +394,18 @@ pub fn LoadTextureFromImage( img: &Image) -> Texture2D{
     unsafe{
         let base = img as *const Image;
         let raw = ptr::read(base);
-        return raylib_raw::LoadTextureFromImage(raw);
+        return Texture2D{raw: raylib_raw::LoadTextureFromImage(raw)};
     }
 }
 
-
+#[allow(bad_style)]
+#[allow(unused)]
+pub fn ImageText(text: &str, font_size: i32, color: Color) -> Image {
+    unsafe {
+        let text_c = CString::new(text).unwrap();
+        return raylib_raw::ImageText(text_c.as_ptr(), font_size, color);
+    }
+}
 
 #[allow(bad_style)]
 #[allow(unused)]
@@ -420,10 +446,15 @@ pub fn UnloadImage( img: &mut Image) {
     }
 }
 
-        
-
-
-
+#[allow(bad_style)]
+#[allow(unused)]
+pub fn UnloadTexture( txt: &mut Texture2D) {
+    unsafe{
+        let base = (&mut txt.raw) as *mut raylib_raw::Texture2D;
+        let raw = ptr::read(base);
+        raylib_raw::UnloadTexture(raw);
+    }
+}
 
 #[allow(bad_style)]
 #[allow(unused)]

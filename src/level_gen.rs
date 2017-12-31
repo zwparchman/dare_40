@@ -14,6 +14,12 @@ pub struct TextureHandle{
 }
 
 impl TextureHandle {
+    pub fn from_texture2d(texture: Texture2D) -> Self {
+        Self{
+            val: Arc::new(texture),
+        }
+    }
+
     pub fn from_file_str(fname: &str) -> Self {
         Self {
             val: load_texture(fname.to_string()).unwrap(),
@@ -151,12 +157,23 @@ pub fn register_level_gen(lua: &rlua::Lua) -> Result<(), rlua::Error >{
     {
         let fun = lua.create_function::<_, TextureHandle, _>(
             |_, table: rlua::Table| -> _ {
-                let name: String = table.get("file")?;
-
-                match load_texture(name) {
-                    Some(val) => return Ok(TextureHandle{val:val}),
-                    None => return Err(rlua::Error::RuntimeError("could not load texture".to_string())),
+                if let Ok(name) = table.get::<_,String>("file") {
+                    match load_texture(name) {
+                        Some(val) => return Ok(TextureHandle{val:val}),
+                        None => return Err(rlua::Error::RuntimeError("could not load texture".to_string())),
+                    }
                 }
+
+                if let Ok(text) = table.get::<_,String>("text") {
+                    let size: i32= table.get("text_size").unwrap_or(20);
+                    let color: Color= table.get("text_color").unwrap_or(Color{r:255, g:255, b:255, a:255});
+                    let img: Image = ImageText(text.as_str(), size, color);
+                    let tex:Texture2D = LoadTextureFromImage(&img);
+                    let handle = TextureHandle::from_texture2d(tex);
+                    return Ok(handle);
+                }
+
+                Err(rlua::Error::RuntimeError("Could not load the texture".to_string()))
             })?;
         lua.globals().set("Texture", fun).unwrap();
     }
@@ -185,7 +202,12 @@ pub fn gen_level_spawner_from_lua(start_frame: u64,
                                   length: f32,
                                   fun_name: &str ,
                                   lua: &rlua::Lua) -> SpawnPlan {
-    let fun: rlua::Function = lua.globals().get(fun_name).unwrap();
+    let fun_opt = lua.globals().get::<_,rlua::Function>(fun_name);
+    if let Err(e) = fun_opt {
+        print!("error {}\n", e);
+        return SpawnPlan::new();
+    }
+    let fun = fun_opt.unwrap();
     match fun.call::<_,SpawnPlan>( (start_frame as i64,
                                     difficulty,
                                     length)) {

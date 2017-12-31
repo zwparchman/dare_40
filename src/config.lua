@@ -459,6 +459,11 @@ function gen_boss_2_level(start_frame, difficulty, length)
     return plan
 end
 
+--[[
+function gen_boss_3_level(start_frame, difficulty, length)
+end
+--]]
+
 function gen_enemy_5(x,y)
     local txt = Texture{ file="yellow-ball.png" }
     local function gen_sub(angle)
@@ -649,10 +654,33 @@ function gen_enemy4_level(start_frame, difficulty, length)
     return gen_level_from_weights(start_frame, difficulty, length, weights)
 end
 
+function text_floater(x,y,text)
+    return {
+        physical = {
+            x=x,
+            y=y,
+            xvel=-100,
+        },
+        drawable = {
+            texture = Texture {
+                text = text,
+            },
+        },
+        despawn_far_left = {},
+    }
+end
+
 function gen_level(start_frame, difficulty, length)
     difficulty = difficulty + 0
     print("difficulty: "..difficulty)
-    return gen_random_level(start_frame, difficulty, length)
+    plan =  gen_random_level(start_frame, difficulty, length)
+    if start_frame == 0 then
+        plan:add_prefab(0, Prefab(text_floater(1300, 100, "WASD to move")))
+        plan:add_prefab(0, Prefab(text_floater(1300, 200, "Space to fire")))
+        plan:add_prefab(0, Prefab(text_floater(1900, 100, "Pickups slow you down until installed")))
+        plan:add_prefab(0, Prefab(text_floater(1900, 200, "Stop firing to install pickups")))
+    end
+    return plan
 end
 
 function gen_random_level(start_frame, difficulty, length)
@@ -695,7 +723,6 @@ function gen_level_from_weights(start_frame, difficulty, length, weights)
     local plan = SpawnPlan()
 
     -- difficulty = difficulty * 2
-    print("difficulty " .. difficulty)
     while difficulty > 0  do
         for k,v in pairs( get_weighted_n(weights, difficulty / 10)) do
             local x = rng_range(1400, 1500)
@@ -716,6 +743,13 @@ function gen_level_from_weights(start_frame, difficulty, length, weights)
     return plan
 end
 
+function respawn_player(frame, diff, len)
+    local plan = SpawnPlan()
+    local prefab  = Prefab(gen_player())
+    plan:add_prefab(frame, prefab)
+    return plan
+end
+
 function gen_player ()
     player_speed = 400
     return {
@@ -730,7 +764,7 @@ function gen_player ()
             movement_speed = player_speed,
             base_speed = player_speed,
             install_progress = 0,
-            install_finish_sound = Sound { file="item-pickup.wav" },
+            install_finish_sound = Sound { file="powerup001.wav" },
         },
         shield = {
             regen = 1.0,
@@ -779,13 +813,13 @@ function gen_star_spawner(start_frame)
             despawn_far_left = {},
             physical = {
                 x=1300,
-                y=math.random()*750.0,
+                y=math.random()*window_height,
                 xvel = ( -250.0 * (color_base * color_base) ),
             },
         }
     end
 
-    local density = 20
+    local density = 1
     local to_spawn = 1000
 
     local cur_frame = start_frame
@@ -798,8 +832,8 @@ function gen_star_spawner(start_frame)
     local spawner = Spawner()
     if start_frame == 0 then
         spawner:push(Prefab(gen_player()))
+        plan:add(0, spawner)
     end
-    plan:add(1, spawner)
 
     while to_spawn >= 0 do
         step = math.random(0,math.tointeger(density))

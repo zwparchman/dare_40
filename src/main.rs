@@ -473,11 +473,11 @@ impl GameData {
     }
 
     fn spawn_stars(&mut self){
-        self.star_spawner.execute(self.frame_count, &mut self.world);
         if self.star_spawner.is_empty() {
             let locked = self.state.lock().unwrap();
             self.star_spawner = gen_star_spawner2(self.frame_count, &locked);
         }
+        self.star_spawner.execute(self.frame_count, &mut self.world);
     }
 
     fn spawn_main(&mut self){
@@ -535,6 +535,17 @@ impl GameData {
                 }
                 _ => {}
             }
+        }
+
+        if IsKeyPressed(KEY_O) {
+            let lua = self.state.lock().unwrap();
+            let mut plan = gen_level_spawner_from_lua(self.frame_count,
+                                                  self.difficulty,
+                                                  10 as f32,
+                                                  "respawn_player",
+                                                  &*lua);
+
+            plan.execute(self.frame_count, &mut self.world);
         }
 
         if ! self.paused {
@@ -727,13 +738,13 @@ impl GameData {
             let pos = self.world.physical_list.get(id).unwrap();
 
             let txt = drw.texture.val;
-            let src_rect = Rectangle {x:0, y:0, width:txt.width, height:txt.height};
+            let src_rect = Rectangle {x:0, y:0, width:txt.raw.width, height:txt.raw.height};
             let dst_rect = Rectangle {
-                x: (pos.x - (txt.width / 2) as f32) as i32,
+                x: (pos.x - (txt.raw.width / 2) as f32) as i32,
                 // x: pos.x as i32,
-                y: (pos.y - (txt.height / 2) as f32) as i32,
-                width: (txt.width) as i32,
-                height: (txt.height) as i32
+                y: (pos.y - (txt.raw.height / 2) as f32) as i32,
+                width: (txt.raw.width) as i32,
+                height: (txt.raw.height) as i32
             };
             DrawTexturePro( &*txt,
                             src_rect,
@@ -858,7 +869,7 @@ impl GameData {
             let mut stats = self.world.player_stats_list.get(a).unwrap();
             let power = self.world.powerup_list.get(b).unwrap();
 
-            stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
+            stats.movement_speed=stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32);
 
             let mut prefab = self.id_to_prefab(b);
             prefab.physical = None;
