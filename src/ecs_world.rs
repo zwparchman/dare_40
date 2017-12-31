@@ -194,4 +194,5 @@ declare_ecs_world_full!(
     (drag, drag_list, Drag, HashStorage<Drag>),
     (avoid_player_y, avoid_player_y_list, AvoidPlayerY, HashStorage<AvoidPlayerY>),
     (clamp_y, clamp_y_list, ClampY, HashStorage<ClampY>),
+    (point_along_movement_vector, point_along_movement_vector_list, PointAlongMovementVector, HashStorage<PointAlongMovementVector>),
 );

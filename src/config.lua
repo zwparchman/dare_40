@@ -125,6 +125,9 @@ function gen_enemy_2(x,y)
             texture = Texture{ file = "enemy2.png" },
             layer = 1.0,
         },
+        point_along_movement_vector = {
+            angular_offset = 180,
+        },
         physical = {
             x=x,
             y=y,
@@ -381,6 +384,9 @@ function gen_boss_2_level(start_frame, difficulty, length)
         despawn_far_left = {},
         bullet = { damage = 5 },
         drag = { y = 0.9, },
+        point_along_movement_vector = {
+            angular_offset = 180,
+        },
     }
 
     local missile_spawner = Spawner()
@@ -761,7 +767,10 @@ function gen_player ()
             texture=Texture{ file="player.png" },
             layer=1.0
         },
-        physical = {x=400, y=400},
+        physical = {
+            x=400, 
+            y=400,
+        },
         player_control = {},
         player_stats = {
             movement_speed = player_speed,

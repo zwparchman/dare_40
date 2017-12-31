@@ -182,6 +182,17 @@ pub struct ClampY {
 }
 from_lua_implimenter!(ClampY, (low 0.0), (high 768.0),);
 
+#[derive(Clone)]
+pub struct PointAlongMovementVector{
+    angular_offset: f32,
+    last_x: f32,
+    last_y: f32,
+}
+from_lua_implimenter!(PointAlongMovementVector,
+                      (last_x 0.0),
+                      (last_y 0.0),
+                      (angular_offset 0.0),);
+
 #[derive(Default, Clone)]
 pub struct Physical{
     x: f32,
@@ -192,8 +203,13 @@ pub struct Physical{
 
     xacc: f32,
     yacc: f32,
+
+    angle: f32,
+    angular_velocity: f32,
 }
 from_lua_implimenter!(Physical,
+                      (angle 0.0),
+                      (angular_velocity 0.0),
                       (x 0.0),
                       (y 0.0),
                       (xvel 0.0),
@@ -560,6 +576,7 @@ impl GameData {
             self.do_stop_at();
             self.do_drag();
             self.do_movement();
+            self.do_point_along_movement_vector();
             self.do_clamp_y();
             self.do_despawn();
             self.do_follow_player();
@@ -742,18 +759,22 @@ impl GameData {
             let pos = self.world.physical_list.get(id).unwrap();
 
             let txt = drw.texture.val;
+            let half_width = txt.raw.width / 2;
+            let half_height = txt.raw.height / 2;
+
             let src_rect = Rectangle {x:0, y:0, width:txt.raw.width, height:txt.raw.height};
             let dst_rect = Rectangle {
-                x: (pos.x - (txt.raw.width / 2) as f32) as i32,
-                y: (pos.y - (txt.raw.height / 2) as f32) as i32,
+                x: (pos.x  as f32) as i32,
+                y: (pos.y as f32) as i32,
                 width: (txt.raw.width) as i32,
                 height: (txt.raw.height) as i32
             };
+            let origin = Vector2::new(half_width as f32, half_height as f32);
             DrawTexturePro( &*txt,
                             src_rect,
                             dst_rect,
-                            Vector2::new(0.0, 0.0),
-                            0.0,
+                            origin,
+                            pos.angle,
                             drw.tint.clone());
     }
 
@@ -1239,6 +1260,27 @@ impl GameData {
         }
     }
 
+    fn do_point_along_movement_vector(&mut self) {
+        let mask = self.world.point_along_movement_vector_list.mask.clone() &
+            self.world.physical_list.mask.clone();
+
+        for id in mask {
+            let mut point = self.world.point_along_movement_vector_list.get(id as IDType).unwrap();
+            let mut phy = self.world.physical_list.get(id as IDType).unwrap();
+
+            let diff_x = phy.x - point.last_x;
+            let diff_y = phy.y - point.last_y;
+
+            phy.angle = f32::atan2(-diff_x, -diff_y) * RAD2DEG as f32 + point.angular_offset + 90.0;
+
+            point.last_x = phy.x;
+            point.last_y = phy.y;
+
+            self.world.point_along_movement_vector_list.add(id as IDType, point);
+            self.world.physical_list.add(id as IDType, phy);
+        }
+    }
+
     fn do_movement(&mut self){
         let mask = self.world.physical_list.mask.clone();
         for id in mask {
@@ -1247,6 +1289,17 @@ impl GameData {
             phy.yvel += phy.yacc * FRAME_TIME;
             phy.x += phy.xvel * FRAME_TIME;
             phy.y += phy.yvel * FRAME_TIME;
+
+            phy.angle += phy.angular_velocity * FRAME_TIME;
+
+            while phy.angle > 720.0 {
+                phy.angle -= 360.0
+            }
+
+            while phy.angle < -720.0 {
+                phy.angle += 360.0
+            }
+
             self.world.physical_list.add(id as IDType, phy);
         }
     }
