@@ -24,7 +24,7 @@ function gen_fire_rate_increase(x,y)
                            Texture{file="fire-rate-up.png"},
                            {
                                fire_rate_increase = 0.95,
-                               pickup_sound = Sound { file="item-pickup.wav" },
+                               pickup_sound = Sound { file="powerup-pickup.wav" },
                            })
 end
 function gen_fire_damage_increase(x,y)
@@ -33,7 +33,7 @@ function gen_fire_damage_increase(x,y)
                            Texture{file="damage-up.png"},
                            {
                                fire_damage_increase = 1.05,
-                               pickup_sound = Sound { file="item-pickup.wav" },
+                               pickup_sound = Sound { file="powerup-pickup.wav" },
                            })
 
 end
@@ -43,7 +43,7 @@ function gen_shield_increase(x,y)
                            Texture{file="shield-up.png"},
                            {
                                shield_increase = 1.05,
-                               pickup_sound = Sound { file="item-pickup.wav" },
+                               pickup_sound = Sound { file="powerup-pickup.wav" },
                            })
 
 end
@@ -53,7 +53,7 @@ function gen_regen_increase(x,y)
                            Texture{file="shield-regen.png"},
                            {
                                regen_increase = 1.05,
-                               pickup_sound = Sound { file="item-pickup.wav" },
+                               pickup_sound = Sound { file="powerup-pickup.wav" },
                            })
 end
 
@@ -63,7 +63,7 @@ function gen_shot_increase(x,y)
                            Texture{ file="shot-number-increase.png" },
                            {
                                shot_increase = 1,
-                               pickup_sound = Sound { file = "item-pickup.wav" }
+                               pickup_sound = Sound { file = "powerup-pickup.wav" }
                            })
 end
 
@@ -666,7 +666,9 @@ function text_floater(x,y,text)
                 text = text,
             },
         },
-        despawn_far_left = {},
+        despawn_far_left = {
+            at = -400,
+        },
     }
 end
 
@@ -764,7 +766,7 @@ function gen_player ()
             movement_speed = player_speed,
             base_speed = player_speed,
             install_progress = 0,
-            install_finish_sound = Sound { file="powerup001.wav" },
+            install_finish_sound = Sound { file="item-install.wav" },
         },
         shield = {
             regen = 1.0,

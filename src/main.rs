@@ -299,7 +299,11 @@ pub struct PlayerControl{}
 #[derive(Clone)]
 pub struct DespawnFarRight{}
 #[derive(Clone, Default)]
-pub struct DespawnFarLeft{}
+pub struct DespawnFarLeft{
+    at: f32,
+}
+from_lua_implimenter!(DespawnFarLeft, (at -80.0),);
+
 #[derive(Clone)]
 pub struct DespawnY{}
 
@@ -1100,8 +1104,10 @@ impl GameData {
 
         for id in mask {
             let phy = self.world.physical_list.get(id as IDType).unwrap();
-            if self.world.despawn_far_left.contains(id as IDType) && phy.x < -80.0 {
-                self.world.destroy_later(id as IDType);
+            if let Some(desp) = self.world.despawn_far_left.get(id as IDType) {
+                if desp.at > phy.x {
+                    self.world.destroy_later(id as IDType);
+                }
             } 
             if self.world.despawn_far_right.contains(id as IDType) && phy.x > GetScreenWidth() as f32 + 120.0 {
                 self.world.destroy_later(id as IDType);
@@ -1277,8 +1283,7 @@ macro_rules! dumb_impl_userdata {
     }
 }
 
-dumb_impl_userdata!(DespawnFarLeft,
-                    DespawnFarRight,
+dumb_impl_userdata!(DespawnFarRight,
                     DespawnY,
                     BossHealthDraw,
                     AutoFire,
