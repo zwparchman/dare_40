@@ -787,7 +787,7 @@ impl GameData {
             to_draw.push((id, self.world.drawable_list.get(id as IDType).unwrap()));
         }
 
-        quickersort::sort_by_key(&mut to_draw, |tup| { (tup.1.layer * 1000.0) as i64  });
+        to_draw.sort_by_key( |tup| { (tup.1.layer * 1000.0) as i64  });
 
         for (id, _drw) in to_draw {
             self.draw_by_id(id as IDType);
