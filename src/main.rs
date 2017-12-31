@@ -48,7 +48,7 @@ mod storage;
 use std::collections::{HashSet};
 
 const FRAME_RATE: f32 = 60.0;
-// const FRAME_RATE: f32 = 120.0;
+// const FRAME_RATE: f32 = 240.0;
 const FRAME_TIME: f32 = 1.0/FRAME_RATE;
 
 const SLOWDOWN_FACTOR: f32 = 0.6;
@@ -747,6 +747,7 @@ impl GameData {
                     bul_phy.yvel = (DEG2RAD as f32 * angle).sin() *  weapon.fire_velocity;
                     bul_phy.x = phy1.x + weapon.offset * weapon.direction;
                     bul_phy.y = phy1.y;
+                    bul_phy.angle = angle;
 
                     self.world.physical_list.add(bul_id, bul_phy);
 
@@ -987,7 +988,7 @@ impl GameData {
                 stats.owned.remove(0);
             }
 
-            stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 + 1.0);
+            stats.movement_speed = stats.base_speed * SLOWDOWN_FACTOR.powf(stats.owned.len() as f32 );
             self.world.player_stats_list.add(id as IDType, stats);
         }
     }
@@ -1138,7 +1139,7 @@ impl GameData {
                 if desp.at > phy.x {
                     self.world.destroy_later(id as IDType);
                 }
-            } 
+            }
             if self.world.despawn_far_right.contains(id as IDType) && phy.x > GetScreenWidth() as f32 + 120.0 {
                 self.world.destroy_later(id as IDType);
             }

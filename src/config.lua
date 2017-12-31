@@ -144,8 +144,8 @@ function gen_enemy_2(x,y)
             ammount = 11.0,
         },
         sine_movement = {
-            amplitude = rng_range(20.0, 40),
-            frequency = rng_range(0.5, 2.0),
+            amplitude = rng_range(100.0, 200),
+            frequency = rng_range(0.1, 0.4),
         },
         team = { team = 1, },
         weapon = {
@@ -365,7 +365,7 @@ function gen_boss_1_level(start_frame, difficulty, length)
     local plan = SpawnPlan()
 
     plan:add(start_frame + 1, boss_spawner)
-    plan:add(start_frame + 10000, Spawner())
+    plan:add(start_frame + 10000000, Spawner())
 
     return plan
 end
@@ -460,7 +460,7 @@ function gen_boss_2_level(start_frame, difficulty, length)
 
     local plan = SpawnPlan()
     plan:add_prefab(start_frame + 10, Prefab(boss))
-    plan:add_prefab(start_frame + 100000, Prefab{})
+    plan:add_prefab(start_frame + 10000000, Prefab{})
 
     return plan
 end
@@ -530,10 +530,13 @@ function gen_enemy_5(x,y)
             xvel = rng_range(-80, -60),
         },
         auto_fire = {},
-        shield = { ammount = 50 },
+        shield = { ammount = 100 },
         sine_movement = {
-            amplitude = 5.0,
-            frequency = 1.5,
+            amplitude = 30.0,
+            frequency = 0.1,
+        },
+        point_along_movement_vector = {
+            angular_offset = 180,
         },
         weapon = {
             prefab = bomb,
@@ -682,7 +685,12 @@ end
 function gen_level(start_frame, difficulty, length)
     difficulty = difficulty + 0
     print("difficulty: "..difficulty)
-    plan =  gen_random_level(start_frame, difficulty, length)
+
+    if false then
+        return gen_boss_1_level(start_frame, difficulty, length)
+    end
+
+    local plan =  gen_random_level(start_frame, difficulty, length)
     if start_frame == 0 then
         plan:add_prefab(0, Prefab(text_floater(1300, 100, "WASD to move")))
         plan:add_prefab(0, Prefab(text_floater(1300, 200, "Space to fire")))
@@ -798,6 +806,7 @@ function gen_player ()
                 physical = {},
                 team = { team = 0 },
                 collidable = { radius = 4.0, },
+                despawn_far_right = {},
                 drawable = {
                     texture = Texture{ file = "red_ball.png" },
                     layer = 1.0,
