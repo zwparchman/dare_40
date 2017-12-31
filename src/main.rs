@@ -730,7 +730,7 @@ impl GameData {
                 weapon.fire_sound.play();
                 weapon.gun_cooldown_frames = weapon.fire_rate as i32;
 
-                for angle in get_shot_angles(weapon.fire_angle, pattern) {
+                for mut angle in get_shot_angles(weapon.fire_angle, pattern) {
                     let bul_id = prefab.spawn(&mut self.world);
 
                     let mut bul_phy;
@@ -740,6 +740,8 @@ impl GameData {
                         print!("Error, bullet_phy does not exist for id {}\n", bul_id);
                         continue;
                     }
+
+                    angle -= phy1.angle;
 
                     bul_phy.xvel = (DEG2RAD as f32 * angle).cos() *  weapon.fire_velocity;
                     bul_phy.yvel = (DEG2RAD as f32 * angle).sin() *  weapon.fire_velocity;
