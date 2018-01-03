@@ -1,3 +1,5 @@
+#[macro_use] extern crate smart_default;
+#[macro_use] extern crate rlua_table_derive;
 #[macro_use] extern crate log;
 #[macro_use] extern crate cached;
 // `cached!` macro requires the `lazy_static!` macro
@@ -69,56 +71,6 @@ fn min_float(a: f32, b: f32) -> f32 {
     }
 }
 
-macro_rules! from_lua_implimenter {
-    ($type: ty,  $(($name: ident $default: expr),)*) => {
-        impl FromLuaTable for $type {
-            fn from_table(table: &rlua::Table) -> Self {
-                Self {
-                    $(
-                    $name: table.get(stringify!($name)).unwrap_or($default),
-                    )*
-                }
-            }
-        }
-    }
-}
-
-fn register_weighted(lua: &rlua::Lua) -> Result<(), rlua::Error> {
-    let fun = lua.create_function(
-        |_, (_table, _count): (rlua::Table, i64)| -> Result<Vec<rlua::Value>, rlua::Error> {
-            /*
-            let mut weights: Vec<Weighted<rlua::Value>> = vec![];
-            for pair in table.pairs() {
-                let (_,v): (i64, rlua::Value) = pair?;
-                if let rlua::Value::Table(tab) = v.clone() {
-                    if let Ok(weight) = tab.get::<_, i64>("weight") {
-                        weights.push(
-                            Weighted{weight: weight.clone() as u32, item: v.clone()}
-                        );
-                    }
-                }
-            }
-
-            //construct the return vector
-            let chooser = WeightedChoice::new(&mut weights);
-            let mut ret = vec![];
-            use rand::Rng;
-            let seed = vec![rand::thread_rng().gen::<u64>()];
-            let rng = rand::isaac::Isaac64Rng::from_seed(&seed);
-            for _ in 0..count {
-                ret.push(chooser.ind_sample(&mut rng));
-            }
-
-            Ok(ret)
-            */
-            Err(rlua::Error::RuntimeError("TBI".to_string()))
-        }
-    )?;
-    lua.globals().set("get_weighted_n", fun).unwrap();
-    Ok(())
-}
-
-
 #[derive(Clone)]
 struct StateWrapper{
     rstate: Arc<Mutex<rlua::Lua>>,
@@ -138,58 +90,47 @@ impl StateWrapper {
 unsafe impl std::marker::Sync for StateWrapper{}
 unsafe impl std::marker::Send for StateWrapper{}
 
-
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct Drag {
     x: f32,
     y: f32,
 }
-from_lua_implimenter!(Drag, (x 0.0), (y 0.0),);
 
-
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct StopAt {
     xloc: f32,
 }
-from_lua_implimenter!(StopAt, (xloc 0.0),);
 
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct SineMovementX {
     frequency: f32,
     step: i32,
     amplitude: f32,
 }
-from_lua_implimenter!(SineMovementX, (frequency 1.0), (step 0), (amplitude 100.0),);
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct SineMovement {
     frequency: f32,
     step: i32,
     amplitude: f32,
 }
-from_lua_implimenter!(SineMovement, (frequency 1.0), (step 0), (amplitude 100.0),);
 
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct ClampY {
     low: f32,
     high: f32,
 }
-from_lua_implimenter!(ClampY, (low 0.0), (high 768.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct PointAlongMovementVector{
     angular_offset: f32,
     last_x: f32,
     last_y: f32,
 }
-from_lua_implimenter!(PointAlongMovementVector,
-                      (last_x 0.0),
-                      (last_y 0.0),
-                      (angular_offset 0.0),);
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, FromLuaTable)]
 pub struct Physical{
     x: f32,
     y: f32,
@@ -203,28 +144,45 @@ pub struct Physical{
     angle: f32,
     angular_velocity: f32,
 }
-from_lua_implimenter!(Physical,
-                      (angle 0.0),
-                      (angular_velocity 0.0),
-                      (x 0.0),
-                      (y 0.0),
-                      (xvel 0.0),
-                      (yvel 0.0),
-                      (xacc 0.0),
-                      (yacc 0.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct Drawable{
     texture: TextureHandle,
     layer: f32,
     tint: Color,
 }
-from_lua_implimenter!(Drawable,
-                      (texture TextureHandle::from_file_str("no-texture.png")),
-                      (layer 0.0),
-                      (tint Color{r:255, g:255, b:255, a:255}),);
 
 #[derive(Clone)]
+pub struct TextureHandle{
+    pub val: Arc<Texture2D>,
+}
+
+impl TextureHandle {
+    pub fn from_texture2d(texture: Texture2D) -> Self {
+        Self{
+            val: Arc::new(texture),
+        }
+    }
+
+    pub fn from_file_str(fname: &str) -> Self {
+        Self {
+            val: load_texture(fname.to_string()).unwrap(),
+        }
+    }
+}
+
+impl std::default::Default for TextureHandle {
+    fn default() -> Self {
+        TextureHandle::from_file_str("no-texture.png")
+    }
+}
+
+impl rlua::UserData for TextureHandle {
+    fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
+    }
+}
+
+#[derive(Clone, Default)]
 struct SoundHandle {
     val: Option<Arc<Sound>>,
 }
@@ -281,7 +239,7 @@ pub struct DeathEvent{
 }
 
 impl FromLuaTable for DeathEvent {
-    fn from_table(table: &rlua::Table) -> Self {
+    fn from_lua_table(table: &rlua::Table) -> Self {
         Self {
             sound: table.get("sound").unwrap_or(SoundHandle::none()),
             spawner: Arc::new( table.get("spawner").unwrap_or(Spawner::new()) ),
@@ -300,62 +258,54 @@ impl DeathEvent{
 
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct Collidable{
     radius: f32,
 }
-from_lua_implimenter!(Collidable, (radius 0.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct PlayerControl{}
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct DespawnFarRight{}
-#[derive(Clone, Default)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct DespawnFarLeft{
     at: f32,
 }
-from_lua_implimenter!(DespawnFarLeft, (at -80.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct DespawnY{}
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct AvoidPlayerY{
     speed: f32,
 }
-from_lua_implimenter!(AvoidPlayerY, (speed 0.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct FollowPlayerY{
     speed: f32,
 }
-from_lua_implimenter!(FollowPlayerY, (speed 0.0),);
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct Bullet{
     damage: f32,
 }
-from_lua_implimenter!(Bullet, (damage 1.0),);
 
-#[derive(Clone)]
+#[derive(Clone, SmartDefault, FromLuaTable)]
 pub struct Powerup {
+    #[default = "1.0"]
     regen_increase: f32,
+    #[default = "1.0"]
     fire_rate_increase: f32,
+    #[default = "1.0"]
     fire_damage_increase: f32,
+    #[default = "1.0"]
     shield_increase: f32,
     pickup_sound: SoundHandle,
     shot_increase: i32,
 }
-from_lua_implimenter!(Powerup,
-    ( regen_increase 1.0 ),
-    ( fire_rate_increase 1.0 ),
-    ( fire_damage_increase 1.0 ),
-    ( shield_increase 1.0 ),
-    ( pickup_sound SoundHandle::none() ),
-    ( shot_increase 0 ),);
-
 const PART_INSTALLED_AT: i32 = (FRAME_RATE * 2.0 ) as i32;
-#[derive(Clone)]
+
+#[derive(Clone, Default, FromLuaTable)]
 pub struct PlayerStats {
     movement_speed: f32,
     base_speed: f32,
@@ -363,14 +313,6 @@ pub struct PlayerStats {
     install_progress: i32,
     install_finish_sound: SoundHandle,
 }
-
-from_lua_implimenter!(PlayerStats,
-    ( movement_speed 0.0 ),
-    ( base_speed 0.0 ),
-    ( owned vec![]),
-    ( install_progress 0 ),
-    ( install_finish_sound SoundHandle::none() ),);
-
 
 #[derive(Clone)]
 pub struct Weapon {
@@ -387,7 +329,7 @@ pub struct Weapon {
 }
 
 impl FromLuaTable for Weapon {
-    fn from_table(table: &rlua::Table) -> Self {
+    fn from_lua_table(table: &rlua::Table) -> Self {
         Self {
             fire_rate: FRAME_RATE * table.get("fire_rate").unwrap_or(10.0),
             fire_velocity: table.get("fire_velocity").unwrap_or(100.0),
@@ -402,23 +344,22 @@ impl FromLuaTable for Weapon {
     }
 }
 
-#[derive(Clone)]
-pub struct BossHealthDraw {
-}
+#[derive(Clone, Default, FromLuaTable)]
+pub struct BossHealthDraw {}
 
-#[derive(Clone)]
+#[derive(Clone, Default)]//, FromLuaTable)]
 pub struct TimeoutDeath{
     ticks: i32,
 }
 impl FromLuaTable for TimeoutDeath {
-    fn from_table(table: &rlua::Table) -> Self {
+    fn from_lua_table(table: &rlua::Table) -> Self {
         Self {
             ticks: (table.get::<_,f32>("time").unwrap_or(0.0) * FRAME_RATE ) as i32
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Shield {
     max_shield: f32,
     ammount: f32,
@@ -426,7 +367,7 @@ pub struct Shield {
 }
 
 impl FromLuaTable for Shield {
-    fn from_table(table: &rlua::Table) -> Self {
+    fn from_lua_table(table: &rlua::Table) -> Self {
         let ammount = table.get("ammount").unwrap_or(1.0);
         let max_shield = table.get("max_shield").unwrap_or(ammount);
         let regen = table.get("regen").unwrap_or(0.0);
@@ -438,15 +379,14 @@ impl FromLuaTable for Shield {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct AutoFire{}
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct Install{}
 
-#[derive(Clone)]
+#[derive(Clone, Default, FromLuaTable)]
 pub struct Team{team: i32}
-from_lua_implimenter!(Team, (team -1),);
 
 
 pub struct GameData {
@@ -482,10 +422,10 @@ impl Application {
     fn new() -> Self {
         let state;
         match load_config("src/config.lua") {
-            Some(val) => {
+            Ok(val) => {
                 state = val;
             },
-            None => {
+            _ => {
                 error!("Can not start the program without a valid config, aborting");
                 std::process::exit(1);
             }
@@ -546,6 +486,11 @@ impl Application {
             match req {
                 GameRequest::Restart => {
                     debug!("Restart requested");
+                    match load_config("src/config.lua") {
+                        Ok(val) => self.state = val,
+                        _ => {},
+                    }
+
                     self.game = Some(GameData::new(self.state.clone()));
                 },
                 GameRequest::Normal => {
@@ -638,10 +583,11 @@ impl GameData {
 
         if IsKeyPressed(KEY_F10) {
             match load_config("src/config.lua") {
-                Some(state) => {
+                Ok(state) => {
+                    debug!("Reloaded config file");
                     self.state = state;
                 }
-                _ => {}
+                _ => {},
             }
         }
 
@@ -1427,54 +1373,29 @@ fn do_file(state: &rlua::Lua, fname: &str) -> std::result::Result<(), rlua::Erro
 }
 
 trait FromLuaTable {
-    fn from_table(table: &rlua::Table) -> Self;
-}
-macro_rules! dumb_impl_userdata {
-    ($($type: ty,)+) => {
-        $(
-        impl FromLuaTable for $type {
-            fn from_table(_table: &rlua::Table) -> Self{
-                Self{}
-            }
-        })+
-    }
+    fn from_lua_table(table: &rlua::Table) -> Self;
 }
 
-dumb_impl_userdata!(DespawnFarRight,
-                    DespawnY,
-                    BossHealthDraw,
-                    AutoFire,
-                    PlayerControl,
-                    Install,
-                    );
-
-fn load_config( fname: &str) -> Option<StateWrapper> {
+fn load_config( fname: &str) -> Result<StateWrapper, rlua::Error> {
     let state = StateWrapper::new();
-    let good; 
     {
         let locked = state.lock().unwrap();
         register_sound(&locked).unwrap();
-        register_weighted(&locked).unwrap();
         register_level_gen(&locked).unwrap();
         register_ecs(&locked).unwrap();
 
 
         match do_file(&locked, fname) {
             Ok(_) => {
-                good = true;
                 trace!("config loaded sucessfully");
             },
             Err(e) => {
-                good = false;
                 error!("config load failed: {}", e);
+                return Err(e);
             },
         }
     }
-    if good {
-        return Some(state);
-    } else {
-        return None;
-    }
+    return Ok(state);
 }
 
 fn main(){

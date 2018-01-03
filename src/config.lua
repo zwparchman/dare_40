@@ -214,7 +214,7 @@ function gen_enemy_3(x,y)
         },
         team = { team = 1 },
         weapon = {
-            patern = 2,
+            pattern = 2,
             fire_angle = rng_range(90, 120),
             fire_rate = rng_range(1.0, 1.5),
             fire_velocity = rng_range(-300, -200),

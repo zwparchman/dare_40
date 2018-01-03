@@ -32,6 +32,13 @@ impl Color {
         }}
 }
 
+impl std::default::Default for Color {
+    fn default() -> Self {
+        Color::new(255,255,255,255)
+    }
+}
+
+
 impl rlua::UserData for Color {
     fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
     }

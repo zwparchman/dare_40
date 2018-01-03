@@ -8,30 +8,6 @@ pub struct Spawner {
     prefabs: Vec<Prefab>,
 }
 
-#[derive(Clone)]
-pub struct TextureHandle{
-    pub val: Arc<Texture2D>,
-}
-
-impl TextureHandle {
-    pub fn from_texture2d(texture: Texture2D) -> Self {
-        Self{
-            val: Arc::new(texture),
-        }
-    }
-
-    pub fn from_file_str(fname: &str) -> Self {
-        Self {
-            val: load_texture(fname.to_string()).unwrap(),
-        }
-    }
-}
-
-impl rlua::UserData for TextureHandle {
-    fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
-    }
-}
-
 
 
 impl Spawner {

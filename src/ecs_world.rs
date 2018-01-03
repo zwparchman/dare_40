@@ -148,7 +148,7 @@ pub fn register_ecs(lua: &rlua::Lua) -> std::result::Result<(), rlua::Error>{
                 Ok(val) => {
                     match val {
                         rlua::Value::Table(ref dat) => {
-                            builder = builder.$name(<$type>::from_table(dat));
+                            builder = builder.$name(<$type>::from_lua_table(dat));
                         },
                         rlua::Value::Nil => {},
                         _ => print!("bad value when loading {}: {:?}\n", stringify!($name), val),
