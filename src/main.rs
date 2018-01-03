@@ -119,24 +119,20 @@ fn register_weighted(lua: &rlua::Lua) -> Result<(), rlua::Error> {
 }
 
 
+#[derive(Clone)]
 struct StateWrapper{
-    rstate: Mutex<rlua::Lua>,
+    rstate: Arc<Mutex<rlua::Lua>>,
 }
 
 impl StateWrapper {
     fn new() -> StateWrapper {
         StateWrapper {
-            rstate: Mutex::new(rlua::Lua::new())
+            rstate: Arc::new(Mutex::new(rlua::Lua::new()))
         }
     }
 
     fn lock(&self ) -> LockResult<MutexGuard<rlua::Lua>> {
         self.rstate.lock()
-    }
-
-    #[allow(unused)]
-    fn try_lock(&self) -> TryLockResult<MutexGuard<rlua::Lua>> {
-        self.rstate.try_lock()
     }
 }
 unsafe impl std::marker::Sync for StateWrapper{}
@@ -453,7 +449,7 @@ pub struct Team{team: i32}
 from_lua_implimenter!(Team, (team -1),);
 
 
-pub struct GameData{
+pub struct GameData {
     frame_count: u64,
 
     spawn_plan: SpawnPlan,
@@ -469,6 +465,97 @@ pub struct GameData{
 
     #[allow(unused)]
     rng: rand::isaac::Isaac64Rng,
+}
+
+enum GameRequest {
+    Normal,
+    Restart,
+    Quit,
+}
+
+pub struct Application {
+    game: Option<GameData>,
+    state: StateWrapper,
+}
+
+impl Application {
+    fn new() -> Self {
+        let state;
+        match load_config("src/config.lua") {
+            Some(val) => {
+                state = val;
+            },
+            None => {
+                error!("Can not start the program without a valid config, aborting");
+                std::process::exit(1);
+            }
+        }
+
+        let h: f32;
+        let w: f32;
+        {
+            let locked = state.lock().unwrap();
+
+            h = locked.globals().get("window_height").unwrap();
+            w = locked.globals().get("window_width").unwrap();
+        }
+
+        {
+            //raylib configuration flags
+            #[allow(unused_mut)]
+            let mut flags: u32 = 0;
+            //flags |= FLAG_SHOW_LOGO;
+            //flags |= FLAG_FULLSCREEN_MODE;
+            flags |= FLAG_WINDOW_RESIZABLE;
+            //flags |= FLAG_WINDOW_DECORATED;
+            //flags |= FLAG_WINDOW_TRANSPARENT;
+            flags |= FLAG_MSAA_4X_HINT;
+            //flags |= FLAG_VSYNC_HINT;
+            SetConfigFlags(flags);
+        }
+
+        InitWindow(w as i32, h as i32, "Dodgem");
+        InitAudioDevice();
+        SetTargetFPS(FRAME_RATE as i32);
+
+        let gl = GameData::new(state.clone());
+
+
+        Self {
+            game: Some(gl),
+            state: state,
+        }
+    }
+
+    fn run(&mut self) -> () {
+
+        while ! WindowShouldClose() {
+            let req;
+            if let Some(ref mut game) = self.game {
+                req = game.step();
+
+                ClearBackground(Color{r:0, g:0, b:0, a:255} );
+                BeginDrawing();
+                DrawFPS(3,3);
+                game.draw();
+                EndDrawing();
+            } else {
+                req = GameRequest::Quit;
+            }
+
+            match req {
+                GameRequest::Restart => {
+                    self.game = Some(GameData::new(self.state.clone()));
+                },
+                GameRequest::Normal => {
+                }
+
+                GameRequest::Quit => {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 impl GameData {
@@ -540,7 +627,7 @@ impl GameData {
         }
     }
 
-    fn step(&mut self){
+    fn step(&mut self) -> GameRequest {
         self.spawn_stars();
         self.spawn_main();
 
@@ -568,6 +655,10 @@ impl GameData {
             plan.execute(self.frame_count, &mut self.world);
         }
 
+        if IsKeyPressed(KEY_R) {
+            return GameRequest::Restart;
+        }
+
         if ! self.paused {
             self.do_player_input();
             self.do_sine_movement();
@@ -591,6 +682,8 @@ impl GameData {
             self.world.maintain();
             self.frame_count+=1;
         }
+
+        return GameRequest::Normal;
     }
 
     fn do_drag(&mut self) {
@@ -1386,54 +1479,6 @@ fn load_config( fname: &str) -> Option<StateWrapper> {
 fn main(){
     pretty_env_logger::init().unwrap();
 
-    let state;
-    match load_config("src/config.lua") {
-        Some(val) => {
-            state = val;
-        },
-        None => {
-            error!("Can not start the program without a valid config, aborting");
-            std::process::exit(1);
-        }
-    }
-
-    let h: f32;
-    let w: f32;
-    {
-        let locked = state.lock().unwrap();
-
-        h = locked.globals().get("window_height").unwrap();
-        w = locked.globals().get("window_width").unwrap();
-    }
-
-
-    {
-        //raylib configuration flags
-        #[allow(unused_mut)]
-        let mut flags: u32 = 0;
-        //flags |= FLAG_SHOW_LOGO;
-        //flags |= FLAG_FULLSCREEN_MODE;
-        flags |= FLAG_WINDOW_RESIZABLE;
-        //flags |= FLAG_WINDOW_DECORATED;
-        //flags |= FLAG_WINDOW_TRANSPARENT;
-        flags |= FLAG_MSAA_4X_HINT;
-        //flags |= FLAG_VSYNC_HINT;
-        SetConfigFlags(flags);
-    }
-
-    InitWindow(w as i32, h as i32, "Dodgem");
-    InitAudioDevice();
-    SetTargetFPS(FRAME_RATE as i32);
-
-    let mut gl = GameData::new(state);
-
-    while ! WindowShouldClose() {
-        gl.step();
-
-        ClearBackground(Color{r:0, g:0, b:0, a:255} );
-        BeginDrawing();
-        DrawFPS(3,3);
-        gl.draw();
-        EndDrawing();
-    }
+    let mut app = Application::new();
+    app.run();
 }
