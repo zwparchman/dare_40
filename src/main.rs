@@ -467,6 +467,12 @@ pub struct GameData {
     rng: rand::isaac::Isaac64Rng,
 }
 
+enum GameRequest {
+    Normal,
+    Restart,
+    Quit,
+}
+
 pub struct Application {
     game: Option<GameData>,
     state: StateWrapper,
@@ -522,15 +528,31 @@ impl Application {
     }
 
     fn run(&mut self) -> () {
+
         while ! WindowShouldClose() {
+            let req;
             if let Some(ref mut game) = self.game {
-                game.step();
+                req = game.step();
 
                 ClearBackground(Color{r:0, g:0, b:0, a:255} );
                 BeginDrawing();
                 DrawFPS(3,3);
                 game.draw();
                 EndDrawing();
+            } else {
+                req = GameRequest::Quit;
+            }
+
+            match req {
+                GameRequest::Restart => {
+                    self.game = Some(GameData::new(self.state.clone()));
+                },
+                GameRequest::Normal => {
+                }
+
+                GameRequest::Quit => {
+                    break;
+                }
             }
         }
     }
@@ -605,7 +627,7 @@ impl GameData {
         }
     }
 
-    fn step(&mut self){
+    fn step(&mut self) -> GameRequest {
         self.spawn_stars();
         self.spawn_main();
 
@@ -633,6 +655,10 @@ impl GameData {
             plan.execute(self.frame_count, &mut self.world);
         }
 
+        if IsKeyPressed(KEY_R) {
+            return GameRequest::Restart;
+        }
+
         if ! self.paused {
             self.do_player_input();
             self.do_sine_movement();
@@ -656,6 +682,8 @@ impl GameData {
             self.world.maintain();
             self.frame_count+=1;
         }
+
+        return GameRequest::Normal;
     }
 
     fn do_drag(&mut self) {
