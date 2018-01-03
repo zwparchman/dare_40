@@ -1427,9 +1427,6 @@ fn main(){
 
     let mut gl = GameData::new(state);
 
-    //gl.spawn_plan = gen_level(10.0, FRAME_RATE*4.0, 0, &mut gl.rng);
-
-
     while ! WindowShouldClose() {
         gl.step();
 
