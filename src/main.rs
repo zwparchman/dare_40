@@ -545,6 +545,7 @@ impl Application {
 
             match req {
                 GameRequest::Restart => {
+                    debug!("Restart requested");
                     self.game = Some(GameData::new(self.state.clone()));
                 },
                 GameRequest::Normal => {
