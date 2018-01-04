@@ -127,6 +127,11 @@ impl Clone for Texture2D {
     }
 }
 
+impl Texture2D {
+    pub fn get_width(&self) -> i32 { self.raw.width }
+    pub fn get_height(&self) -> i32 { self.raw.height }
+}
+
 use self::raylib_raw::bool_;
 
 #[allow(unused)]

@@ -1,3 +1,5 @@
+require "json"
+
 window_height = 760
 window_width = 1300
 
@@ -71,7 +73,7 @@ end
 function gen_enemy_a (x,y)
     return {
         drawable = {
-            texture = Texture{file="enemy1.png"},
+            texture = Texture{file="enemy_a.png"},
             layer=1.0,
         },
         physical = {
@@ -123,7 +125,7 @@ end
 function gen_enemy_b(x,y)
     return {
         drawable = {
-            texture = Texture{ file = "enemy2.png" },
+            texture = Texture{ file = "enemy_b.png" },
             layer = 1.0,
         },
         point_along_movement_vector = {
@@ -180,7 +182,7 @@ end
 function gen_enemy_c(x,y)
     return {
         drawable = {
-            texture = Texture{ file = "enemy3.png" },
+            texture = Texture{ file = "enemy_c.png" },
             layer = 1,
         },
         physical = {
@@ -577,7 +579,7 @@ function gen_enemy_d(x,y)
     
     return {
         drawable = {
-            texture = Texture { file = "enemy4.png" },
+            texture = Texture { file = "enemy_d.png" },
             layer = 1,
         },
         physical = {
@@ -775,6 +777,10 @@ function gen_player ()
         drawable={
             texture=Texture{ file="player.png" },
             layer=1.0
+        },
+        animation = {
+            frames=4,
+            times = {0.4, 0.4, 0.4, 0.4},
         },
         physical = {
             x=400, 

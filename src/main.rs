@@ -145,6 +145,49 @@ pub struct Physical{
     angular_velocity: f32,
 }
 
+#[derive(Clone, SmartDefault, FromLuaTable)]
+pub struct Animation {
+    #[default = "1"]
+    frames: i32,
+
+    times: Vec<f32>,
+    current_time: f32,
+    current_frame: i32,
+    total_time: Option<f32>,
+}
+
+impl Animation {
+    fn calc_total_time(&mut self) {
+        if self.total_time.is_none() {
+            let mut sum=0.0;
+            for i in self.total_time.iter() {
+                sum += i;
+            }
+            self.total_time = Some(sum);
+        }
+    }
+    fn get_src_rect(&mut self, drw: &Drawable) -> Rectangle {
+        self.calc_total_time();
+        let txt = drw.texture.val.clone();
+        let total_width = txt.get_width();
+        let total_height = txt.get_height();
+
+        let frame_width = total_width / self.frames;
+        self.current_time += FRAME_TIME;
+        if self.times[self.current_frame as usize] > self.current_time {
+            self.current_frame = (self.current_frame + 1) % self.frames;
+            self.current_time = 0.0;
+        }
+
+        Rectangle{
+            x: frame_width * self.current_frame,
+            y: total_height,
+            width: frame_width,
+            height: total_height,
+        }
+    }
+}
+
 #[derive(Clone, Default, FromLuaTable)]
 pub struct Drawable{
     texture: TextureHandle,
@@ -288,6 +331,9 @@ impl DeathEvent{
     }
 
 }
+
+#[derive(Clone, Default, FromLuaTable)]
+pub struct DrawCollidable{}
 
 #[derive(Clone, Default, FromLuaTable)]
 pub struct Collidable{
@@ -829,21 +875,43 @@ impl GameData {
         }
     }
 
-    fn draw_by_id( &self, id: IDType) {
+    fn draw_by_id( &mut self, id: IDType) {
             let drw = self.world.drawable_list.get(id).unwrap();
             let pos = self.world.physical_list.get(id).unwrap();
 
-            let txt = drw.texture.val;
-            let half_width = txt.raw.width / 2;
-            let half_height = txt.raw.height / 2;
+            let txt = &drw.texture.val;
+            let mut half_width = txt.get_width()/2;
+            let mut half_height = txt.get_height() / 2;
 
-            let src_rect = Rectangle {x:0, y:0, width:txt.raw.width, height:txt.raw.height};
-            let dst_rect = Rectangle {
-                x: (pos.x  as f32) as i32,
-                y: (pos.y as f32) as i32,
-                width: (txt.raw.width) as i32,
-                height: (txt.raw.height) as i32
-            };
+            let src_rect;
+            let dst_rect;
+
+            if let Some(ref mut animation) = self.world.animation_list.get(id) {
+                src_rect = animation.get_src_rect(&drw);
+                dst_rect = Rectangle {
+                    x: pos.x as i32,
+                    y: pos.y as i32,
+                    width: src_rect.width,
+                    height: src_rect.height,
+                };
+                half_width = src_rect.width / 2;
+                half_height = src_rect.height / 2;
+                self.world.animation_list.add(id, animation.clone());
+            } else {
+                src_rect = Rectangle {x:0, y:0, width: txt.get_width(), height:txt.get_height()};
+                dst_rect = Rectangle {
+                    x: (pos.x  as f32) as i32,
+                    y: (pos.y as f32) as i32,
+                    width: (txt.get_width()) as i32,
+                    height: (txt.get_height()) as i32
+                };
+            }
+
+            if self.world.draw_collidable_list.contains(id) {
+                let phy = self.world.physical_list.get(id).clone().unwrap();
+                let col = self.world.collidable_list.get(id).clone().unwrap();
+                DrawCircle(phy.x as i32, phy.y as i32, col.radius, Color{r:255, g:255, b:255, a:255});
+            }
             let origin = Vector2::new(half_width as f32, half_height as f32);
             DrawTexturePro( &*txt,
                             src_rect,
