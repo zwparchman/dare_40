@@ -275,7 +275,7 @@ function get_shot_angles(angle, count)
     return ret
 end
 
-function gen_boss_1_level(start_frame, difficulty, length)
+function gen_boss_a_level(start_frame, difficulty, length)
     local null_cluster = gen_null_powerup_cluster()
     local shot_increase_spawner = Spawner()
     shot_increase_spawner:push( Prefab(gen_shot_increase(0,0)))
@@ -285,7 +285,7 @@ function gen_boss_1_level(start_frame, difficulty, length)
         team = { team = 1 },
         despawn_far_left = {},
         despawn_y = {},
-        drawable = { texture = Texture{ file = "boss001_minion.png" } },
+        drawable = { texture = Texture{ file = "boss_a_minion.png" } },
         timeout_death = { time = 30 },
         collidable = { radius = 20.0 },
         sine_movement = {
@@ -300,9 +300,10 @@ function gen_boss_1_level(start_frame, difficulty, length)
         bullet = { damage = 50 },
         death_event = {
             score_add = 10,
-            sound = Sound{ file = "boss001_minion_death.wav" },
+            sound = Sound{ file = "boss_a_minion_death.wav" },
             spawner = null_cluster,
         },
+        physical = { angular_velocity = 30},
         weapon = {
             fire_angle = 360,
             fire_rate = 3,
@@ -323,6 +324,7 @@ function gen_boss_1_level(start_frame, difficulty, length)
                     texture = Texture { file = "red_ball.png" },
                     layer = 1,
                 },
+                animation = get_animation_from_json("red_ball.json"),
             },
         },
         auto_fire = {},
@@ -331,8 +333,9 @@ function gen_boss_1_level(start_frame, difficulty, length)
     local boss =  {
         auto_fire = {},
         drawable = {
-            texture = Texture{ file = "boss001.png" },
+            texture = Texture{ file = "boss_a.png" },
         },
+        animation = get_animation_from_json("boss_a.json"),
         physical = {
             x= 1400,
             y=400,
@@ -358,7 +361,7 @@ function gen_boss_1_level(start_frame, difficulty, length)
             fire_angle = 120,
             fire_velocity = -60,
             gun_cooldown_frames = 4,
-            fire_sound = Sound{file="boss001_shot.wav"},
+            fire_sound = Sound{file="boss_a_shot.wav"},
             prefab = Prefab(minion),
             pattern = 3,
             offset = -20,
@@ -695,7 +698,7 @@ function gen_level(start_frame, difficulty, length)
     print("difficulty: "..difficulty)
 
     if true then
-        return gen_boss_b_level(start_frame, difficulty, length)
+        return gen_boss_a_level(start_frame, difficulty, length)
     end
 
     local plan =  gen_random_level(start_frame, difficulty, length)
