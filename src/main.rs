@@ -177,8 +177,39 @@ impl std::default::Default for TextureHandle {
     }
 }
 
+
+
 impl rlua::UserData for TextureHandle {
     fn add_methods(_methods: &mut rlua::UserDataMethods<Self>) {
+    }
+}
+
+#[derive(Clone, SmartDefault)]
+pub struct ImageHandle {
+    #[default = "load_image(\"no-texture.png\".to_string()).unwrap()"]
+    pub val: Arc<Image>
+}
+
+impl ImageHandle {
+    fn from_image(img: Image) -> Self {
+        Self{
+            val: Arc::new(img),
+        }
+    }
+}
+
+impl rlua::UserData for ImageHandle {
+    fn add_methods(methods: &mut rlua::UserDataMethods<Self>) {
+        methods.add_method("crop",|_, this, (x,y,w,h):(i32, i32, i32, i32)|{
+            let mut img: Image = std::sync::Arc::make_mut(&mut this.val.clone()).clone();
+            ImageCrop(&mut img, Rectangle{x:x, y:y, width:w, height:h});
+
+            return Ok(ImageHandle::from_image(img));
+        });
+        methods.add_method("to_texture",|_lua, this, _arg: ()| {
+            let img: Image = std::sync::Arc::make_mut(&mut this.val.clone()).clone();
+            Ok(TextureHandle::from_texture2d(LoadTextureFromImage(&img)))
+        });
     }
 }
 
@@ -283,6 +314,7 @@ pub struct AvoidPlayerY{
 #[derive(Clone, Default, FromLuaTable)]
 pub struct FollowPlayerY{
     speed: f32,
+    offset: f32,
 }
 
 #[derive(Clone, Default, FromLuaTable)]
@@ -538,7 +570,7 @@ impl GameData {
         if self.spawn_plan.is_empty() {
             trace!("Creating new main spawn plan on frame:{} difficulty: {} wave: {}", self.frame_count, self.difficulty, self.wave);
             let player_shield_fraction = self.get_player_shield_fraction();
-            self.difficulty += 3.0 * player_shield_fraction;
+            self.difficulty += 3.3 * player_shield_fraction;
             self.wave += 1;
             if self.wave == 20 {
                 let lua = self.state.lock().unwrap();
@@ -549,7 +581,7 @@ impl GameData {
                                                              &*lua);
 
             } else if self.wave == 40 {
-                self.difficulty *= 1.5;
+                self.difficulty *= 1.2;
                 let lua = self.state.lock().unwrap();
                 self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
                                                              self.difficulty,
@@ -716,7 +748,7 @@ impl GameData {
             let mut phy = self.world.physical_list.get(id as IDType).unwrap();
             let fol = self.world.follow_player_y_list.get(id as IDType).unwrap();
 
-            let diff = player_phy.y - phy.y;
+            let diff = player_phy.y - phy.y + fol.offset;
             let to_move = diff.abs();
             let dir = { if diff > 0.0 { 1.0 } else { -1.0 } };
             let will_move = min_float(to_move, fol.speed * FRAME_TIME);
@@ -787,7 +819,7 @@ impl GameData {
                     bul_phy.yvel = (DEG2RAD as f32 * angle).sin() *  weapon.fire_velocity;
                     bul_phy.x = phy1.x + weapon.offset * weapon.direction;
                     bul_phy.y = phy1.y;
-                    bul_phy.angle = angle;
+                    bul_phy.angle = -angle;
 
                     self.world.physical_list.add(bul_id, bul_phy);
 

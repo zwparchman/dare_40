@@ -130,6 +130,21 @@ pub fn register_level_gen(lua: &rlua::Lua) -> Result<(), rlua::Error >{
         lua.globals().set("Color", fun).unwrap();
     }
 
+{
+        let fun = lua.create_function::<_, ImageHandle, _>(
+            |_, table: rlua::Table| -> _ {
+                if let Ok(name) = table.get::<_,String>("file") {
+                    match load_image(name) {
+                        Some(val) => return Ok(ImageHandle{val:val}),
+                        None => return Err(rlua::Error::RuntimeError("could not load image".to_string())),
+                    }
+                }
+
+                Err(rlua::Error::RuntimeError("Could not load the texture".to_string()))
+            })?;
+        lua.globals().set("Image", fun).unwrap();
+    }
+
     {
         let fun = lua.create_function::<_, TextureHandle, _>(
             |_, table: rlua::Table| -> _ {

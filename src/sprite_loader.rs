@@ -15,6 +15,16 @@ fn load_texture(fname: String) -> Option<Arc<Texture2D>> = {
     }
 }
 
+cached!{ LOAD_IMAGE_CACHE >>
+fn load_image(fname: String) -> Option<Arc<Image>> = {
+        //print!("loading texture {}\n", fname);
+        let opt = LoadImage(fname.as_str() );
+        return Some(Arc::new(opt));
+    }
+}
+
+
+
 cached!{ LOAD_SOUND_CACHE >>
 fn load_sound(fname: String) -> Option<Arc<Sound>> = {
         //print!("loading sound {}\n", fname);

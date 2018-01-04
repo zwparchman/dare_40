@@ -68,7 +68,7 @@ function gen_shot_increase(x,y)
 end
 
 
-function gen_enemy_1 (x,y)
+function gen_enemy_a (x,y)
     return {
         drawable = {
             texture = Texture{file="enemy1.png"},
@@ -77,7 +77,7 @@ function gen_enemy_1 (x,y)
         physical = {
             x=x,
             y=y,
-            xvel= rng_range(-200.0, -150.0)
+            xvel= rng_range(-250.0, -200.0)
         },
         auto_fire = {},
         collidable = {
@@ -89,15 +89,16 @@ function gen_enemy_1 (x,y)
             score_add = 10
         },
         follow_player_y = {
-            speed = 100.0,
+            speed = 120.0,
+            offset=rng_range(-50, 50),
         },
         shield = {
             ammount = 11.0,
         },
         team = { team = 1 },
         weapon = {
-            fire_rate = rng_range(3.0, 4.0),
-            fire_velocity = rng_range( -300.0, -250.0),
+            fire_rate = rng_range(2.0, 3.0),
+            fire_velocity = rng_range( -400.0, -350.0),
             prefab = Prefab{
                 team = { team = 1 },
                 despawn_far_left = {},
@@ -113,13 +114,13 @@ function gen_enemy_1 (x,y)
                     layer = 1.0,
                 },
                 offset = -10.0,
-                gun_cooldown_frames = rng_range(1.0, 3.0),
+                gun_cooldown_frames = 0,
             },
         },
     }
 end
 
-function gen_enemy_2(x,y)
+function gen_enemy_b(x,y)
     return {
         drawable = {
             texture = Texture{ file = "enemy2.png" },
@@ -176,7 +177,7 @@ function gen_enemy_2(x,y)
     }
 end
 
-function gen_enemy_3(x,y)
+function gen_enemy_c(x,y)
     return {
         drawable = {
             texture = Texture{ file = "enemy3.png" },
@@ -470,7 +471,7 @@ function gen_boss_3_level(start_frame, difficulty, length)
 end
 --]]
 
-function gen_enemy_5(x,y)
+function gen_enemy_e(x,y)
     local txt = Texture{ file="yellow-ball.png" }
     local function gen_sub(angle)
         angle = angle * DEGREE_TO_RAD
@@ -521,7 +522,7 @@ function gen_enemy_5(x,y)
 
     return {
         drawable = {
-            texture = Texture{file="enemy5.png"},
+            texture = Texture{file="enemy_e.png"},
             layer= 1,
         },
         physical = { 
@@ -571,7 +572,7 @@ function gen_null_powerup_cluster()
     return spawner
 end
 
-function gen_enemy_4(x,y)
+function gen_enemy_d(x,y)
     local spawner = gen_null_powerup_cluster()
     
     return {
@@ -627,11 +628,11 @@ end
 function gen_bomber_level(start_frame, difficulty, length)
     weights  = {
         {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  1, value = {fun = gen_enemy_1, cost = 10}},
-        {weight =  1, value = {fun = gen_enemy_2, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_3, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_4, cost = 80}},
-        {weight = 20, value = {fun = gen_enemy_5, cost = 40}},
+        {weight =  1, value = {fun = gen_enemy_a, cost = 10}},
+        {weight =  1, value = {fun = gen_enemy_b, cost = 20}},
+        {weight =  1, value = {fun = gen_enemy_c, cost = 40}},
+        {weight =  1, value = {fun = gen_enemy_d, cost = 80}},
+        {weight = 20, value = {fun = gen_enemy_e, cost = 40}},
     }
 
     return gen_level_from_weights(start_frame, difficulty, length, weights)
@@ -640,11 +641,11 @@ end
 function gen_enemy1_level(start_frame, difficulty, length)
     weights  = {
         {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  20, value = {fun = gen_enemy_1, cost = 10/2}},
-        {weight =  5, value = {fun = gen_enemy_2, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_3, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_4, cost = 80}},
-        {weight = 0, value = {fun = gen_enemy_5, cost = 40}},
+        {weight =  20, value = {fun = gen_enemy_a, cost = 10/2}},
+        {weight =  5, value = {fun = gen_enemy_b, cost = 20}},
+        {weight =  1, value = {fun = gen_enemy_c, cost = 40}},
+        {weight =  1, value = {fun = gen_enemy_d, cost = 80}},
+        {weight = 0, value = {fun = gen_enemy_e, cost = 40}},
     }
 
     return gen_level_from_weights(start_frame, difficulty, length, weights)
@@ -653,11 +654,11 @@ end
 function gen_enemy4_level(start_frame, difficulty, length)
     weights  = {
         {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  1, value = {fun = gen_enemy_1, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_2, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_3, cost = 10}},
-        {weight =  50, value = {fun = gen_enemy_4, cost = 1}},
-        {weight = 0, value = {fun = gen_enemy_5, cost = 40}},
+        {weight =  1, value = {fun = gen_enemy_a, cost = 40}},
+        {weight =  1, value = {fun = gen_enemy_b, cost = 20}},
+        {weight =  1, value = {fun = gen_enemy_c, cost = 10}},
+        {weight =  50, value = {fun = gen_enemy_d, cost = 1}},
+        {weight = 0, value = {fun = gen_enemy_e, cost = 40}},
     }
 
     return gen_level_from_weights(start_frame, difficulty, length, weights)
@@ -705,14 +706,14 @@ function gen_random_level(start_frame, difficulty, length)
     weights = {
         {weight = 3, value = gen_enemy1_level },
     }
-    if difficulty > 150 then
+    if difficulty > 80 then
         insert(weights, {weight = 3, value = gen_normal_level } )
     end
-    if difficulty > 200 then
+    if difficulty > 100 then
         insert(weights, {weight = 3, value = gen_bomber_level })
     end
 
-    if difficulty > 300 then
+    if difficulty > 150 then
         insert(weights, {weight = 1, value = gen_enemy4_level } )
     end
 
@@ -723,14 +724,14 @@ end
 function gen_normal_level(start_frame, difficulty, length)
     weights  = {
         {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight = 50, value = {fun = gen_enemy_1, cost = 10}},
-        {weight = 30, value = {fun = gen_enemy_2, cost = 20}},
-        {weight = 20, value = {fun = gen_enemy_3, cost = 40}},
-        {weight =  5, value = {fun = gen_enemy_4, cost = 50}},
+        {weight = 50, value = {fun = gen_enemy_a, cost = 10}},
+        {weight = 30, value = {fun = gen_enemy_b, cost = 20}},
+        {weight = 20, value = {fun = gen_enemy_c, cost = 40}},
+        {weight =  5, value = {fun = gen_enemy_d, cost = 50}},
     }
 
-    if difficulty > 150.0 then
-        table.insert(weights, {weight = 10, value = {fun = gen_enemy_5, cost = 80}})
+    if difficulty > 100.0 then
+        table.insert(weights, {weight = 10, value = {fun = gen_enemy_e, cost = 80}})
     end
 
     return gen_level_from_weights(start_frame, difficulty, length, weights)

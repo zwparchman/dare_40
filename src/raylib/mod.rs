@@ -18,7 +18,6 @@ use rlua;
 
 pub use self::raylib_raw::Color;
 pub use self::raylib_raw::Image;
-// pub use self::raylib_raw::Texture2D;
 pub use self::raylib_raw::Rectangle;
 pub use self::raylib_raw::Sound;
 
