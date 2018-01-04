@@ -1,13 +1,16 @@
 .PHONY:clean 
 
-all: player.json
+json = player.json enemy_a.json red_ball.json
+
+all: $(json)
 	cargo build
 
-run:
+run: $(json)
 	cargo run
 
 clean:
 	cargo clean
+	rm player.json player.png
 
-player.json: player.ase makefile
+%.json: %.ase
 	aseprite -b $< --format json-array --sheet $(basename $<).png --data $@ 

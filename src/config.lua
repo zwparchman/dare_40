@@ -76,6 +76,7 @@ function gen_enemy_a (x,y)
             texture = Texture{file="enemy_a.png"},
             layer=1.0,
         },
+        animation = get_animation_from_json("enemy_a.json"),
         physical = {
             x=x,
             y=y,
@@ -111,6 +112,7 @@ function gen_enemy_a (x,y)
                 collidable = {
                     radius = 4.0,
                 },
+                animation = get_animation_from_json("red_ball.json"),
                 drawable = {
                     texture = Texture { file = "red_ball.png" },
                     layer = 1.0,
@@ -782,7 +784,7 @@ function get_animation_from_json(fname)
     assert(frames > 0, "must have at least one frame")
     local times = {}
     for k,frame in ipairs(dat['frames']) do
-        local dur = frame['duration']
+        local dur = frame['duration'] / 1000
         table.insert(times, dur)
     end
     local ret = {
@@ -844,7 +846,7 @@ function gen_player ()
             fire_velocity = 300.0,
             fire_sound = Sound { file="laser001.wav" },
             prefab = Prefab{
-                physical = {},
+                physical = {angle=180},
                 team = { team = 0 },
                 collidable = { radius = 4.0, },
                 despawn_far_right = {},
@@ -852,6 +854,7 @@ function gen_player ()
                     texture = Texture{ file = "red_ball.png" },
                     layer = 1.0,
                 },
+                animation = get_animation_from_json("red_ball.json"),
                 bullet = { damage = 10 },
             },
             offset = 40.0,

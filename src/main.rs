@@ -166,19 +166,22 @@ impl Animation {
             self.total_time = Some(sum);
         }
     }
+    fn step(&mut self) {
+        self.current_time += FRAME_TIME;
+        if self.times[self.current_frame as usize] < self.current_time {
+            self.current_frame = (self.current_frame + 1) % self.frames;
+            self.current_time = 0.0;
+        }
+    }
+
     fn get_src_rect(&mut self, drw: &Drawable) -> Rectangle {
         self.calc_total_time();
+        self.step();
         let txt = drw.texture.val.clone();
         let total_width = txt.get_width();
         let total_height = txt.get_height();
 
         let frame_width = total_width / self.frames;
-        self.current_time += FRAME_TIME;
-        if self.times[self.current_frame as usize] > self.current_time {
-            self.current_frame = (self.current_frame + 1) % self.frames;
-            self.current_time = 0.0;
-        }
-
         Rectangle{
             x: frame_width * self.current_frame,
             y: total_height,
