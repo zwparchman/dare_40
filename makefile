@@ -1,6 +1,6 @@
 .PHONY:clean 
 
-all:
+all: player.json
 	cargo build
 
 run:
@@ -8,3 +8,6 @@ run:
 
 clean:
 	cargo clean
+
+player.json: player.ase makefile
+	aseprite -b $< --format json-array --sheet $(basename $<).png --data $@ 

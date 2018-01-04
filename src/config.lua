@@ -1,4 +1,4 @@
-require "json"
+json = require "json"
 
 window_height = 760
 window_width = 1300
@@ -770,18 +770,52 @@ function respawn_player(frame, diff, len)
     return plan
 end
 
+function loud(thing)
+    print("-------------------------------")
+    print(thing)
+    print("-------------------------------")
+end
+
+function get_animation_from_json(fname)
+    local dat = get_json(fname)
+    local frames = #dat['frames']
+    assert(frames > 0, "must have at least one frame")
+    local times = {}
+    for k,frame in ipairs(dat['frames']) do
+        local dur = frame['duration']
+        table.insert(times, dur)
+    end
+    local ret = {
+        frames = frames,
+        times = times,
+    }
+    return ret
+end
+
+function get_json(fname)
+    local file = io.open(fname, "r")
+    local contents = file:read("a")
+    return json.decode(contents)
+end
+
+function get_frames_from_json(fname)
+    local file = io.open(fname, "r")
+    local contents = file:read("a")
+    local dat = json.decode(contents)
+    local frames = #dat['frames']
+    return frames
+end
+
 function gen_player ()
     player_speed = 400
+    local frames = get_frames_from_json("player.json")
     return {
         install={},
         drawable={
             texture=Texture{ file="player.png" },
             layer=1.0
         },
-        animation = {
-            frames=4,
-            times = {0.4, 0.4, 0.4, 0.4},
-        },
+        animation = get_animation_from_json("player.json"),
         physical = {
             x=400, 
             y=400,
