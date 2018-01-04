@@ -23,16 +23,17 @@ end
 function gen_fire_rate_increase(x,y)
     return powerup_factory(x,
                            y,
-                           Texture{file="fire-rate-up.png"},
+                           "fire-rate-up",
                            {
                                fire_rate_increase = 0.95,
                                pickup_sound = Sound { file="powerup-pickup.wav" },
                            })
+
 end
 function gen_fire_damage_increase(x,y)
     return powerup_factory(x,
                            y,
-                           Texture{file="damage-up.png"},
+                           "damage-up",
                            {
                                fire_damage_increase = 1.05,
                                pickup_sound = Sound { file="powerup-pickup.wav" },
@@ -42,7 +43,7 @@ end
 function gen_shield_increase(x,y)
     return powerup_factory(x,
                            y,
-                           Texture{file="shield-up.png"},
+                           "shield-up",
                            {
                                shield_increase = 1.05,
                                pickup_sound = Sound { file="powerup-pickup.wav" },
@@ -52,7 +53,7 @@ end
 function gen_regen_increase(x,y)
     return powerup_factory(x,
                            y,
-                           Texture{file="shield-regen.png"},
+                           "shield-regen",
                            {
                                regen_increase = 1.05,
                                pickup_sound = Sound { file="powerup-pickup.wav" },
@@ -62,7 +63,7 @@ end
 function gen_shot_increase(x,y)
     return powerup_factory(x,
                            y,
-                           Texture{ file="shot-number-increase.png" },
+                           "shot-number-increase",
                            {
                                shot_increase = 1,
                                pickup_sound = Sound { file = "powerup-pickup.wav" }
@@ -172,7 +173,8 @@ function gen_enemy_b(x,y)
                 drawable = {
                     texture = Texture{ file = "green-ball.png" },
                     layer = 1.0,
-                }
+                },
+                animation = get_animation_from_json("green-ball.json"),
             },
             fire_velocity = rng_range(-300, -280),
             offset = -10,
@@ -245,10 +247,10 @@ function gen_enemy_c(x,y)
 
 end
 
-function powerup_factory(x,y, texture, powerup_stats)
+function powerup_factory(x,y, base_name, powerup_stats)
     return {
         drawable = {
-            texture = texture,
+            texture = Texture{file=base_name .. ".png"},
             layer = 1,
         },
         physical = {
@@ -259,6 +261,7 @@ function powerup_factory(x,y, texture, powerup_stats)
         collidable = { radius = 20 },
         despawn_far_left = {},
         powerup = powerup_stats,
+        animation = get_animation_from_json(base_name .. ".json"),
     }
 end
 
@@ -375,7 +378,7 @@ function gen_boss_1_level(start_frame, difficulty, length)
     return plan
 end
 
-function gen_boss_2_level(start_frame, difficulty, length)
+function gen_boss_b_level(start_frame, difficulty, length)
     local missile_builder = {
         physical = {},
         team = { team = 1 },
@@ -387,7 +390,7 @@ function gen_boss_2_level(start_frame, difficulty, length)
             layer = 1,
         },
         despawn_far_left = {},
-        bullet = { damage = 5 },
+        bullet = { damage = 12 },
         drag = { y = 0.9, },
         point_along_movement_vector = {
             angular_offset = 180,
@@ -426,8 +429,9 @@ function gen_boss_2_level(start_frame, difficulty, length)
 
     local boss = {
         drawable = {
-            texture = Texture{ file="boss002.png" },
+            texture = Texture{ file="boss_b.png" },
         },
+        animation = get_animation_from_json("boss_b.json"),
         physical = {
             x = 1400,
             y = 400,
@@ -561,12 +565,11 @@ function gen_enemy_e(x,y)
 end
 
 function gen_null_powerup_cluster()
-    local txt = Texture { file="null-powerup.png" }
     local snd = Sound { file="bad-pickup.wav" }
     local spawner = Spawner()
 
     for _,i in pairs({-7, 0, 7}) do
-        local null_powerup = powerup_factory(0,0, txt, { pickup_sound = snd })
+        local null_powerup = powerup_factory(0,0, "null-powerup", { pickup_sound = snd })
         local base = null_powerup['physical']['xvel']
         null_powerup['collidable']['radius'] = 8
         null_powerup['physical']['yvel'] = math.sin(DEGREE_TO_RAD * i) * base
@@ -691,8 +694,8 @@ function gen_level(start_frame, difficulty, length)
     difficulty = difficulty + 0
     print("difficulty: "..difficulty)
 
-    if false then
-        return gen_boss_1_level(start_frame, difficulty, length)
+    if true then
+        return gen_boss_b_level(start_frame, difficulty, length)
     end
 
     local plan =  gen_random_level(start_frame, difficulty, length)
@@ -780,6 +783,8 @@ end
 
 function get_animation_from_json(fname)
     local dat = get_json(fname)
+    if dat == nil then return nil end
+
     local frames = #dat['frames']
     assert(frames > 0, "must have at least one frame")
     local times = {}
@@ -796,6 +801,8 @@ end
 
 function get_json(fname)
     local file = io.open(fname, "r")
+    if file == nil then return nil end
+
     local contents = file:read("a")
     return json.decode(contents)
 end
@@ -812,6 +819,7 @@ function gen_player ()
     player_speed = 400
     local frames = get_frames_from_json("player.json")
     return {
+        --draw_collidable = {},
         install={},
         drawable={
             texture=Texture{ file="player.png" },

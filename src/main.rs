@@ -153,19 +153,9 @@ pub struct Animation {
     times: Vec<f32>,
     current_time: f32,
     current_frame: i32,
-    total_time: Option<f32>,
 }
 
 impl Animation {
-    fn calc_total_time(&mut self) {
-        if self.total_time.is_none() {
-            let mut sum=0.0;
-            for i in self.total_time.iter() {
-                sum += i;
-            }
-            self.total_time = Some(sum);
-        }
-    }
     fn step(&mut self) {
         self.current_time += FRAME_TIME;
         if self.times[self.current_frame as usize] < self.current_time {
@@ -174,9 +164,7 @@ impl Animation {
         }
     }
 
-    fn get_src_rect(&mut self, drw: &Drawable) -> Rectangle {
-        self.calc_total_time();
-        self.step();
+    fn get_src_rect(&self, drw: &Drawable) -> Rectangle {
         let txt = drw.texture.val.clone();
         let total_width = txt.get_width();
         let total_height = txt.get_height();
@@ -626,7 +614,7 @@ impl GameData {
                 self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
                                                              self.difficulty,
                                                              5.0 * FRAME_RATE,
-                                                             "gen_boss_1_level",
+                                                             "gen_boss_a_level",
                                                              &*lua);
 
             } else if self.wave == 40 {
@@ -635,7 +623,7 @@ impl GameData {
                 self.spawn_plan = gen_level_spawner_from_lua(self.frame_count,
                                                              self.difficulty,
                                                              5.0 * FRAME_RATE,
-                                                             "gen_boss_2_level",
+                                                             "gen_boss_b_level",
                                                              &*lua);
 
             } else {
@@ -706,12 +694,23 @@ impl GameData {
             self.do_shield_regen();
             self.do_weapon_cooldown();
             self.do_weapon_fire();
+            self.do_animation_step();
 
             self.world.maintain();
             self.frame_count+=1;
         }
 
         return GameRequest::Normal;
+    }
+
+    fn do_animation_step(&mut self){
+        let mask = self.world.animation_list.mask.clone();
+
+        for id in mask {
+            let mut anim = self.world.animation_list.get(id as IDType).unwrap();
+            anim.step();
+            self.world.animation_list.add(id as IDType, anim);
+        }
     }
 
     fn do_drag(&mut self) {
@@ -889,7 +888,7 @@ impl GameData {
             let src_rect;
             let dst_rect;
 
-            if let Some(ref mut animation) = self.world.animation_list.get(id) {
+            if let Some(animation) = self.world.animation_list.get(id) {
                 src_rect = animation.get_src_rect(&drw);
                 dst_rect = Rectangle {
                     x: pos.x as i32,

@@ -151,7 +151,7 @@ pub fn register_ecs(lua: &rlua::Lua) -> std::result::Result<(), rlua::Error>{
                             builder = builder.$name(<$type>::from_lua_table(dat));
                         },
                         rlua::Value::Nil => {},
-                        _ => print!("bad value when loading {}: {:?}\n", stringify!($name), val),
+                        _ => print!("nill found when loading {}: {:?}\n", stringify!($name), val),
                     }
                 }
                 Err(e) => {
