@@ -4,6 +4,7 @@ use *;
 macro_rules! declare_ecs_world_full {
     ($(($name: ident, $list: ident, $type: ty, $storage: ty),)+) => {
 
+#[derive(Clone)]
 pub struct EcsWorld {
     $(
         pub $list: $storage,

@@ -458,6 +458,7 @@ pub struct Install{}
 pub struct Team{team: i32}
 
 
+#[derive(Clone)]
 pub struct GameData {
     frame_count: u64,
 
@@ -485,6 +486,8 @@ enum GameRequest {
 pub struct Application {
     game: Option<GameData>,
     state: StateWrapper,
+
+    old: Option<GameData>,
 }
 
 impl Application {
@@ -533,6 +536,7 @@ impl Application {
         Self {
             game: Some(gl),
             state: state,
+            old: None,
         }
     }
 
@@ -550,6 +554,14 @@ impl Application {
                 EndDrawing();
             } else {
                 req = GameRequest::Quit;
+            }
+
+            if IsKeyPressed(KEY_F5) {
+                self.old = self.game.clone();
+            }
+
+            if IsKeyPressed(KEY_F9) && self.old.is_some() {
+                self.game = self.old.clone();
             }
 
             match req {
