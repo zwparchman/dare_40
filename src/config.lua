@@ -1,4 +1,6 @@
 json = require "json"
+weighted_rand = require "weighted_rand"
+
 
 window_height = 760
 window_width = 1300
@@ -611,67 +613,39 @@ function gen_enemy_d(x,y)
     }
 end
 
-function get_weighted_n(weights, count)
-    local lst = {}
-    for k,v in ipairs(weights) do
-        local weight = v['weight']
-        while weight > 0 do
-            table.insert(lst, v['value'])
-            weight = weight - 1
-        end
-    end
-
-    if #lst <= 1 then
-        print("lst is of length " .. #lst .. " which is not allowed in get_weighted_n")
-        return nil
-    end
-
-    local ret = {}
-    while #ret < count do
-        local index = math.tointeger(math.random(1,#lst))
-        table.insert(ret, lst[index])
-    end
-
-    return ret
-end
-
 function gen_bomber_level(start_frame, difficulty, length)
-    weights  = {
-        {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  1, value = {fun = gen_enemy_a, cost = 10}},
-        {weight =  1, value = {fun = gen_enemy_b, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_c, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_d, cost = 80}},
-        {weight = 20, value = {fun = gen_enemy_e, cost = 40}},
-    }
-
-    return gen_level_from_weights(start_frame, difficulty, length, weights)
+    picker = weighted_rand:new()
+    picker:add(5, {fun = gen_random_upgrade, cost = 2})
+    picker:add(1, {fun = gen_enemy_a, cost = 10})
+    picker:add(1, {fun = gen_enemy_b, cost = 20})
+    picker:add(1, {fun = gen_enemy_c, cost = 40})
+    picker:add(1, {fun = gen_enemy_d, cost = 80})
+    picker:add(20, {fun = gen_enemy_e, cost = 80})
+    return gen_level_from_weights(start_frame, difficulty, length, picker)
 end
 
 function gen_enemy1_level(start_frame, difficulty, length)
-    weights  = {
-        {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  20, value = {fun = gen_enemy_a, cost = 10/2}},
-        {weight =  5, value = {fun = gen_enemy_b, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_c, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_d, cost = 80}},
-        {weight = 0, value = {fun = gen_enemy_e, cost = 40}},
-    }
+    picker = weighted_rand:new()
+    picker:add(5, {fun = gen_random_upgrade, cost = 2})
+    picker:add(20, {fun = gen_enemy_a, cost = 10/2})
+    picker:add(5, {fun = gen_enemy_b, cost = 20})
+    picker:add(1, {fun = gen_enemy_c, cost = 40})
+    picker:add(1, {fun = gen_enemy_d, cost = 80})
+        --{weight = 0, value = {fun = gen_enemy_e, cost = 40}},
 
-    return gen_level_from_weights(start_frame, difficulty, length, weights)
+    return gen_level_from_weights(start_frame, difficulty, length, picker)
 end
 
 function gen_enemy4_level(start_frame, difficulty, length)
-    weights  = {
-        {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight =  1, value = {fun = gen_enemy_a, cost = 40}},
-        {weight =  1, value = {fun = gen_enemy_b, cost = 20}},
-        {weight =  1, value = {fun = gen_enemy_c, cost = 10}},
-        {weight =  50, value = {fun = gen_enemy_d, cost = 1}},
-        {weight = 0, value = {fun = gen_enemy_e, cost = 40}},
-    }
+    picker = weighted_rand:new()
+    picker:add(5, {fun = gen_random_upgrade, cost = 2})
+    picker:add(1, {fun = gen_enemy_a, cost = 40})
+    picker:add(1, {fun = gen_enemy_b, cost = 20})
+    picker:add(1, {fun = gen_enemy_c, cost = 10})
+    picker:add(50, {fun = gen_enemy_d, cost = 1})
+        --{weight = 0, value = {fun = gen_enemy_e, cost = 40}},
 
-    return gen_level_from_weights(start_frame, difficulty, length, weights)
+    return gen_level_from_weights(start_frame, difficulty, length, picker)
 end
 
 function text_floater(x,y,text)
@@ -697,7 +671,7 @@ function gen_level(start_frame, difficulty, length)
     difficulty = difficulty + 0
     print("difficulty: "..difficulty)
 
-    if true then
+    if false then
         return gen_boss_a_level(start_frame, difficulty, length)
     end
 
@@ -713,60 +687,61 @@ end
 
 function gen_random_level(start_frame, difficulty, length)
     local insert = table.insert
-    weights = {
-        {weight = 3, value = gen_enemy1_level },
-    }
+    local picker = weighted_rand:new()
+    picker:add(3, gen_enemy1_level)
+
     if difficulty > 80 then
-        insert(weights, {weight = 3, value = gen_normal_level } )
+        picker:add(3, gen_normal_level)
     end
     if difficulty > 100 then
-        insert(weights, {weight = 3, value = gen_bomber_level })
+        picker:add(3, gen_bomber_level)
     end
 
     if difficulty > 150 then
-        insert(weights, {weight = 1, value = gen_enemy4_level } )
+        picker:add(1, gen_enemy4_level)
     end
 
-    local fun = get_weighted_n(weights, 1)[1]
+    local fun = picker:get()
     return fun(start_frame, difficulty, length)
 end
 
 function gen_normal_level(start_frame, difficulty, length)
-    weights  = {
-        {weight =  5, value = {fun = gen_random_upgrade, cost = 2}},
-        {weight = 50, value = {fun = gen_enemy_a, cost = 10}},
-        {weight = 30, value = {fun = gen_enemy_b, cost = 20}},
-        {weight = 20, value = {fun = gen_enemy_c, cost = 40}},
-        {weight =  5, value = {fun = gen_enemy_d, cost = 50}},
-    }
+    picker = weighted_rand:new()
+    picker:add(5, {fun = gen_random_upgrade, cost = 2})
+    picker:add(50, {fun = gen_enemy_a, cost = 10})
+    picker:add(30, {fun = gen_enemy_b, cost = 20})
+    picker:add(20, {fun = gen_enemy_c, cost = 40})
+    picker:add(5, {fun = gen_enemy_d, cost = 50})
 
     if difficulty > 100.0 then
-        table.insert(weights, {weight = 10, value = {fun = gen_enemy_e, cost = 80}})
+        picker:add(10, {fun = gen_enemy_e, cost = 120})
     end
 
-    return gen_level_from_weights(start_frame, difficulty, length, weights)
+    return gen_level_from_weights(start_frame, difficulty, length, picker)
 end
 
-function gen_level_from_weights(start_frame, difficulty, length, weights) 
+function gen_level_from_weights(start_frame, difficulty, length, picker) 
     local plan = SpawnPlan()
 
     -- difficulty = difficulty * 2
     while difficulty > 0  do
-        for k,v in pairs( get_weighted_n(weights, difficulty / 10)) do
-            local x = rng_range(1400, 1500)
-            local y = rng_range(0, window_height)
-            local fun = v['fun']
-            local cost = v['cost']
+        local x = rng_range(1400, 1500)
+        local y = rng_range(0, window_height)
+        local v = picker:get()
+        local fun = v['fun']
+        local cost = v['cost']
 
-            difficulty = difficulty - cost
-            local prefab = Prefab(fun(x,y))
+        difficulty = difficulty - cost
+        local prefab = Prefab(fun(x,y))
 
-            local rand = math.random()
-            local offset = (rand * length)
-            local frame = start_frame + offset
-            local iframe = math.floor(frame)
-            plan:add_prefab(iframe, prefab)
+        local rand = math.random()
+        local offset = (rand * length)
+        local frame = start_frame + offset
+        if difficulty < 0 then
+            frame = start_frame + length
         end
+        local iframe = math.floor(frame)
+        plan:add_prefab(iframe, prefab)
     end
     return plan
 end
